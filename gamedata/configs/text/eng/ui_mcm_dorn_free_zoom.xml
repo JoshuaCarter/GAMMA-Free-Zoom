@@ -3,85 +3,67 @@
 	<string id="ui_mcm_menu_dorn_free_zoom">
 		<text>Dorn's Free Zoom</text>
 	</string>
-	<string id="ui_mcm_dorn_free_zoom_main_section">
-		<text>Main</text>
+	<string id="ui_mcm_dorn_free_zoom_zoom_section">
+		<text>Zoom</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_keybinds_section">
+		<text>Keybinds</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_mouse_wheel_section">
+		<text>Mouse Wheel</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_development_section">
 		<text>Development</text>
 	</string>
-	<string id="ui_mcm_dorn_free_zoom_main_description">
-		<text>Free zoom and ADS stack (hip FOV × ADS% × free-zoom%). Toggle / zoom in / out / scroll. Optical scopes own their FOV; free zoom is blocked there. Iron ADS can free-zoom; scroll passes through on optical for scope zoom.</text>
+	<string id="ui_mcm_dorn_free_zoom_zoom_description">
+		<text>Doesn't affect magnified sights. Cannot free zoom while sprinting. ADS + free zoom never exceed 50% total.</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_enabled">
-		<text>Enable free zoom</text>
+		<text>Enable</text>
 	</string>
-	<string id="ui_mcm_dorn_free_zoom_enabled_desc">
-		<text>Turn free zoom on or off. Turning off restores hip FOV immediately.</text>
+	<string id="ui_mcm_dorn_free_zoom_free_zoom">
+		<text>Free zoom % FOV reduction</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_ads_zoom">
+		<text>ADS zoom % FOV reduction</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_ads_zoom_desc">
+		<text>ADS will always zoom at least this much.</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_move_speed">
+		<text>Move speed % while zoomed</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_key_toggle">
-		<text>Toggle key</text>
-	</string>
-	<string id="ui_mcm_dorn_free_zoom_key_toggle_desc">
-		<text>Flip free zoom on or off. Works hip or ADS (stacks with ADS%). Blocked on optical scopes.</text>
+		<text>Zoom in/out</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_key_zoom_in">
-		<text>Zoom in key</text>
-	</string>
-	<string id="ui_mcm_dorn_free_zoom_key_zoom_in_desc">
-		<text>Turn free zoom on (stacks with ADS if aiming). Blocked on optical scopes.</text>
+		<text>Zoom in</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_key_zoom_out">
-		<text>Zoom out key</text>
-	</string>
-	<string id="ui_mcm_dorn_free_zoom_key_zoom_out_desc">
-		<text>Turn free zoom off. ADS stays at ADS% if still aiming.</text>
+		<text>Zoom out</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_scroll_wheel">
-		<text>Use scroll wheel</text>
+		<text>Scroll to zoom</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_scroll_wheel_desc">
-		<text>Scroll up zooms in, scroll down zooms out (hip or iron ADS). Optical scopes keep normal scroll for zoom steps. PDA and inventory keep normal scroll.</text>
+		<text>Blocks weapon switch on scroll.</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_reverse_scroll">
-		<text>Reverse scroll direction</text>
-	</string>
-	<string id="ui_mcm_dorn_free_zoom_reverse_scroll_desc">
-		<text>Swap scroll up/down for free zoom.</text>
+		<text>Invert scroll direction</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_scroll_steps">
 		<text>Scroll steps to zoom</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_scroll_steps_desc">
-		<text>How many scroll notches in the same direction (within the gap time) before zoom in or out. Raise this for twitchy mice. Default: 1</text>
+		<text>Raise for twitchy mice.</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_scroll_max_gap_ms">
-		<text>Scroll step gap</text>
+		<text>Scroll steps reset ms</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_scroll_max_gap_ms_desc">
-		<text>Max time between scroll notches that still count toward one zoom. Older notches drop. Default: 200 ms</text>
-	</string>
-	<string id="ui_mcm_dorn_free_zoom_free_zoom">
-		<text>Free zoom (%)</text>
-	</string>
-	<string id="ui_mcm_dorn_free_zoom_free_zoom_desc">
-		<text>Extra FOV shrink while free zooming. Stacks with ADS% (hip × ADS × free). 0% = none. Default: 40%</text>
-	</string>
-	<string id="ui_mcm_dorn_free_zoom_ads_zoom">
-		<text>ADS zoom (%)</text>
-	</string>
-	<string id="ui_mcm_dorn_free_zoom_ads_zoom_desc">
-		<text>Iron-sight FOV shrink when you aim. Free zoom stacks on top. Optical scopes are left alone. Default: 15%</text>
-	</string>
-	<string id="ui_mcm_dorn_free_zoom_speed_reduction">
-		<text>Move speed reduction (%)</text>
-	</string>
-	<string id="ui_mcm_dorn_free_zoom_speed_reduction_desc">
-		<text>Slow walk while free zooming (sprint uses a milder share of the same setting). 0% = no slowdown. Default: 40%</text>
+		<text>Steps only accumulate if the last step was &lt; X ms ago.</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_debug_log">
-		<text>Enable debug logging</text>
-	</string>
-	<string id="ui_mcm_dorn_free_zoom_debug_log_desc">
-		<text>Write free zoom events to the game log (zoom changes, blocked actions, ADS, GUI, death).</text>
+		<text>Debug log</text>
 	</string>
 </string_table>

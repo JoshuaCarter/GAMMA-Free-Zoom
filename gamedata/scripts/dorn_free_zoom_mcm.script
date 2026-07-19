@@ -8,19 +8,20 @@ end
 
 function on_mcm_load()
 	local MCM = dorn_mcm()
+	local kb_mod = (ui_mcm and ui_mcm.kb_mod_radio) or "radio_h"
 	return {
 		id = "dorn_free_zoom",
 		text = "ui_mcm_menu_dorn_free_zoom",
 		gr = {
 			{
-				id = "main",
+				id = "zoom",
 				sh = true,
-				text = "ui_mcm_dorn_free_zoom_main_section",
+				text = "ui_mcm_dorn_free_zoom_zoom_section",
 				gr = MCM.with_header({
 					{
-						id = "main_description",
+						id = "zoom_description",
 						type = "desc",
-						text = "ui_mcm_dorn_free_zoom_main_description",
+						text = "ui_mcm_dorn_free_zoom_zoom_description",
 					},
 					{
 						id = "enabled",
@@ -34,9 +35,9 @@ function on_mcm_load()
 						type = "track",
 						val = 2,
 						min = 0,
-						max = 90,
+						max = 50,
 						step = 1,
-						def = 40,
+						def = 35,
 						hint = "dorn_free_zoom_free_zoom",
 					},
 					{
@@ -44,27 +45,59 @@ function on_mcm_load()
 						type = "track",
 						val = 2,
 						min = 0,
-						max = 90,
+						max = 50,
 						step = 1,
 						def = 15,
 						hint = "dorn_free_zoom_ads_zoom",
 					},
 					{
-						id = "speed_reduction",
+						id = "move_speed",
 						type = "track",
 						val = 2,
 						min = 0,
-						max = 100,
+						max = 70,
 						step = 1,
-						def = 40,
-						hint = "dorn_free_zoom_speed_reduction",
+						def = 70,
+						hint = "dorn_free_zoom_move_speed",
 					},
+				}),
+			},
+			{
+				id = "keybinds",
+				sh = true,
+				text = "ui_mcm_dorn_free_zoom_keybinds_section",
+				gr = MCM.with_header({
 					{
 						id = "key_toggle",
 						type = "key_bind",
 						val = 2,
 						def = -1,
 						hint = "dorn_free_zoom_key_toggle",
+					},
+					{
+						id = "key_toggle_modifier",
+						type = kb_mod,
+						val = 2,
+						def = 0,
+						hint = "mcm_kb_modifier",
+						content = {
+							{ 0, "mcm_kb_mod_none" },
+							{ 1, "mcm_kb_mod_shift" },
+							{ 2, "mcm_kb_mod_ctrl" },
+							{ 3, "mcm_kb_mod_alt" },
+						},
+					},
+					{
+						id = "key_toggle_mode",
+						type = kb_mod,
+						val = 2,
+						def = 0,
+						hint = "mcm_kb_mode",
+						content = {
+							{ 0, "mcm_kb_mode_press" },
+							{ 1, "mcm_kb_mode_dtap" },
+							{ 2, "mcm_kb_mode_hold" },
+						},
 					},
 					{
 						id = "key_zoom_in",
@@ -80,6 +113,38 @@ function on_mcm_load()
 						def = -1,
 						hint = "dorn_free_zoom_key_zoom_out",
 					},
+					{
+						id = "key_inout_modifier",
+						type = kb_mod,
+						val = 2,
+						def = 0,
+						hint = "mcm_kb_modifier",
+						content = {
+							{ 0, "mcm_kb_mod_none" },
+							{ 1, "mcm_kb_mod_shift" },
+							{ 2, "mcm_kb_mod_ctrl" },
+							{ 3, "mcm_kb_mod_alt" },
+						},
+					},
+					{
+						id = "key_inout_mode",
+						type = kb_mod,
+						val = 2,
+						def = 0,
+						hint = "mcm_kb_mode",
+						content = {
+							{ 0, "mcm_kb_mode_press" },
+							{ 1, "mcm_kb_mode_dtap" },
+							{ 2, "mcm_kb_mode_hold" },
+						},
+					},
+				}),
+			},
+			{
+				id = "mouse_wheel",
+				sh = true,
+				text = "ui_mcm_dorn_free_zoom_mouse_wheel_section",
+				gr = MCM.with_header({
 					{
 						id = "scroll_wheel",
 						type = "check",
