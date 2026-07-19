@@ -1,0 +1,17 @@
+# OS / editor noise
+Thumbs.db
+Desktop.ini
+.DS_Store
+*.swp
+*~
+
+# Log files
+*.log
+**/logs/
+
+# ALAO (improve skill)
+*.script.alao-bak
+
+# Blender source (local authoring; not shipped in mod)
+*.blend
+*.blend1

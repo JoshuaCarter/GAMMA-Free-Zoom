@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+	<string id="ui_mcm_menu_dorn_free_zoom">
+		<text>Dorn's Free Zoom</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_main_section">
+		<text>Main</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_development_section">
+		<text>Development</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_main_description">
+		<text>Eye zoom between hip FOV and free-zoom FOV. Toggle flips. Zoom in / out force one side. Works with any item in hands. Cancels when you open inventory, PDA, dialog, ADS, or reload. Unbind stock Free Zoom if that mod is enabled.</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_enabled">
+		<text>Enable free zoom</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_enabled_desc">
+		<text>Turn free zoom on or off. Turning off restores hip FOV immediately.</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_key_toggle">
+		<text>Toggle key</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_key_toggle_desc">
+		<text>Flip between hip FOV and free-zoom FOV.</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_key_zoom_in">
+		<text>Zoom in key</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_key_zoom_in_desc">
+		<text>Go to free-zoom FOV. No change if already there.</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_key_zoom_out">
+		<text>Zoom out key</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_key_zoom_out_desc">
+		<text>Go to hip FOV. No change if already there.</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_scroll_wheel">
+		<text>Use scroll wheel</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_scroll_wheel_desc">
+		<text>Scroll up zooms in, scroll down zooms out. In gameplay this blocks weapon-switch on scroll. PDA and inventory keep normal scroll.</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_reverse_scroll">
+		<text>Reverse scroll direction</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_reverse_scroll_desc">
+		<text>Swap scroll up/down for free zoom.</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_scroll_steps">
+		<text>Scroll steps to zoom</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_scroll_steps_desc">
+		<text>How many scroll notches in the same direction (within the gap time) before zoom in or out. Raise this for twitchy mice. Default: 1</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_scroll_max_gap_ms">
+		<text>Scroll step gap</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_scroll_max_gap_ms_desc">
+		<text>Max time between scroll notches that still count toward one zoom. Older notches drop. Default: 100 ms</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_free_zoom">
+		<text>Free zoom</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_free_zoom_desc">
+		<text>How much to shrink FOV while free zooming. Higher = stronger. 0% = none (toggle does nothing), 40% ~ old Free Zoom default, 90% = max. Default: 40%</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_ads_zoom">
+		<text>ADS zoom</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_ads_zoom_desc">
+		<text>How much to shrink FOV while aiming down sights. Higher = stronger. 15% ~ old Free Zoom default. Default: 15%</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_speed_reduction">
+		<text>Move speed reduction</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_speed_reduction_desc">
+		<text>Slow walk while free zooming (sprint uses a milder share of the same setting, matching old Free Zoom). 0% = no slowdown, 40% = old Free Zoom run slowdown. Default: 40%</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_debug_log">
+		<text>Enable debug logging</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_debug_log_desc">
+		<text>Write free zoom events to the game log.</text>
+	</string>
+</string_table>

@@ -1,0 +1,135 @@
+-- dorn_mcm_banner:begin (managed by sync-dorn-common.sh)
+local DORN_COMMON_VERSION = "dorn_common_442e61f8"
+local function dorn_mcm()
+	local hash = DORN_COMMON_VERSION:match("dorn_common_(.+)$")
+	return _G["dorn_mcm_" .. hash]
+end
+-- dorn_mcm_banner:end
+
+function on_mcm_load()
+	local MCM = dorn_mcm()
+	return {
+		id = "dorn_free_zoom",
+		text = "ui_mcm_menu_dorn_free_zoom",
+		gr = {
+			{
+				id = "main",
+				sh = true,
+				text = "ui_mcm_dorn_free_zoom_main_section",
+				gr = MCM.with_header({
+					{
+						id = "main_description",
+						type = "desc",
+						text = "ui_mcm_dorn_free_zoom_main_description",
+					},
+					{
+						id = "enabled",
+						type = "check",
+						val = 1,
+						def = true,
+						hint = "dorn_free_zoom_enabled",
+					},
+					{
+						id = "key_toggle",
+						type = "key_bind",
+						val = 2,
+						def = -1,
+						hint = "dorn_free_zoom_key_toggle",
+					},
+					{
+						id = "key_zoom_in",
+						type = "key_bind",
+						val = 2,
+						def = -1,
+						hint = "dorn_free_zoom_key_zoom_in",
+					},
+					{
+						id = "key_zoom_out",
+						type = "key_bind",
+						val = 2,
+						def = -1,
+						hint = "dorn_free_zoom_key_zoom_out",
+					},
+					{
+						id = "scroll_wheel",
+						type = "check",
+						val = 1,
+						def = false,
+						hint = "dorn_free_zoom_scroll_wheel",
+					},
+					{
+						id = "reverse_scroll",
+						type = "check",
+						val = 1,
+						def = false,
+						hint = "dorn_free_zoom_reverse_scroll",
+					},
+					{
+						id = "scroll_steps",
+						type = "track",
+						val = 2,
+						min = 1,
+						max = 10,
+						step = 1,
+						def = 1,
+						hint = "dorn_free_zoom_scroll_steps",
+					},
+					{
+						id = "scroll_max_gap_ms",
+						type = "track",
+						val = 2,
+						min = 50,
+						max = 500,
+						step = 25,
+						def = 100,
+						hint = "dorn_free_zoom_scroll_max_gap_ms",
+					},
+					{
+						id = "free_zoom",
+						type = "track",
+						val = 2,
+						min = 0,
+						max = 90,
+						step = 1,
+						def = 40,
+						hint = "dorn_free_zoom_free_zoom",
+					},
+					{
+						id = "ads_zoom",
+						type = "track",
+						val = 2,
+						min = 0,
+						max = 90,
+						step = 1,
+						def = 15,
+						hint = "dorn_free_zoom_ads_zoom",
+					},
+					{
+						id = "speed_reduction",
+						type = "track",
+						val = 2,
+						min = 0,
+						max = 100,
+						step = 1,
+						def = 40,
+						hint = "dorn_free_zoom_speed_reduction",
+					},
+				}),
+			},
+			{
+				id = "development",
+				sh = true,
+				text = "ui_mcm_dorn_free_zoom_development_section",
+				gr = MCM.with_header({
+					{
+						id = "debug_log",
+						type = "check",
+						val = 1,
+						def = false,
+						hint = "dorn_free_zoom_debug_log",
+					},
+				}),
+			},
+		},
+	}
+end
