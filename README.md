@@ -1,4 +1,4 @@
-# Dorn's Free Zoom v0.9.0
+# Dorn's Free Zoom v0.9.1
 
 Eye zoom for **S.T.A.L.K.E.R. G.A.M.M.A.** - toggle, zoom-in, zoom-out, and optional scroll wheel.
 
