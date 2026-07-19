@@ -357,9 +357,11 @@ local function compute_logical_fov()
 end
 
 local function set_freezoom_speed(active)
-	-- speed.add_speed needs db.actor and GAMMA's speed.script (Teepo's / BHS / etc).
-	-- Skip early boot or installs without that module — FOV zoom still works.
-	if not (db and db.actor and speed and speed.add_speed) then
+	-- Prefer shared speed.script on GAMMA; else our vendored Teepo copy.
+	-- (Do not name the local `speed` — that shadows the global on the RHS.)
+	local speed_mod = (speed and speed.add_speed and speed) or dorn_free_zoom_speed
+	-- speed.add_speed needs db.actor; skip during on_game_start / early boot.
+	if not (db and db.actor and speed_mod and speed_mod.add_speed) then
 		return
 	end
 	if active then
@@ -367,11 +369,11 @@ local function set_freezoom_speed(active)
 		local run_mult = CONFIG.move_speed / 100
 		-- Sprint slowdown is 1/8 of the run slowdown (was 5% vs 40% at old default).
 		local sprint_mult = 1 - (1 - run_mult) * 0.125
-		speed.add_speed("dorn_freezoom_speed_run", run_mult, false, true)
-		speed.add_speed("dorn_freezoom_speed_sprint", sprint_mult, true, true)
+		speed_mod.add_speed("dorn_freezoom_speed_run", run_mult, false, true)
+		speed_mod.add_speed("dorn_freezoom_speed_sprint", sprint_mult, true, true)
 	else
-		speed.add_speed("dorn_freezoom_speed_run", 1, false, true)
-		speed.add_speed("dorn_freezoom_speed_sprint", 1, true, true)
+		speed_mod.add_speed("dorn_freezoom_speed_run", 1, false, true)
+		speed_mod.add_speed("dorn_freezoom_speed_sprint", 1, true, true)
 	end
 end
 
