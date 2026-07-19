@@ -7,10 +7,10 @@ Same idea as **Kute's Free Zoom Rewrite**, but:
 - Keybinds for **zoom in/out**, **zoom in**, and **zoom out**.
 - Supports **scroll wheel** free zoom and plays nice with ADS/scopes.
 - More opinionated/restrictive:
-  - Max free zoom is 50% of FOV (even when stacking auto ADS zoom).
+  - Max free zoom is 50% of FOV.
   - Max move speed while zooming is 70%.
   - Cannot zoom while sprinting.
-  - Zoom reset on item change.
+  - Zoom out on item change.
 - Suppresses Kute's Free Zoom Rewrite to avoid conflicts.
 
 ## Installation
