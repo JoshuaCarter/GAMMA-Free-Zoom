@@ -357,8 +357,9 @@ local function compute_logical_fov()
 end
 
 local function set_freezoom_speed(active)
-	-- speed.add_speed needs db.actor; skip during on_game_start / early boot.
-	if not (db and db.actor) then
+	-- speed.add_speed needs db.actor and GAMMA's speed.script (Teepo's / BHS / etc).
+	-- Skip early boot or installs without that module — FOV zoom still works.
+	if not (db and db.actor and speed and speed.add_speed) then
 		return
 	end
 	if active then

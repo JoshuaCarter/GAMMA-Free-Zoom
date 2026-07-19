@@ -1,4 +1,4 @@
-# Dorn's Free Zoom v0.1.0
+# Dorn's Free Zoom v0.1.1
 
 Free zoom for **S.T.A.L.K.E.R. G.A.M.M.A.** — based on Kute's Free Zoom with tweaks and support for scroll wheel zoom.
 
