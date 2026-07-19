@@ -16,7 +16,7 @@
 		<text>Development</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_zoom_description">
-		<text>Doesn't affect magnified sights. Cannot free zoom while sprinting. ADS + free zoom never exceed 50% total.</text>
+		<text>Doesn't affect magnified sights. Cannot free zoom while sprinting, using items, or without a gun. ADS + free zoom never exceed 50% total.</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_enabled">
 		<text>Enable</text>
