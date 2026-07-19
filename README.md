@@ -7,17 +7,16 @@ Eye zoom for **S.T.A.L.K.E.R. G.A.M.M.A.** - toggle, zoom-in, zoom-out, and opti
 - Toggle / zoom-in / zoom-out binds (unbound by default)
 - Optional scroll wheel zoom (blocks weapon-switch in gameplay; PDA and inventory keep normal scroll)
 - Scroll step debounce for twitchy mice
-- Free zoom and ADS as 0-90% FOV reduction (higher = stronger)
+- Free zoom and ADS stack multiplicatively (hip × ADS% × free%), like Kute
+- Optical scopes own FOV; free zoom cancelled/blocked there; iron ADS can free-zoom
 - Move speed reduction while free zoomed (0-100%, default 40%)
-- Works with any item in hands; auto-cancels in inventory / PDA / dialog / ADS / reload
-- Neutralizes stock Free Zoom FOV callbacks if that mod is still loaded
+- Works with any item in hands; auto-cancels free zoom in inventory / PDA / dialog / reload / optical
 
 ## Installation
 
 1. Download the latest release from https://github.com/JoshuaCarter/GAMMA-Free-Zoom/releases
 2. Install via MO2 like normal
-3. Unbind the stock Free Zoom key (or disable that mod)
-4. Configure binds in MCM -> Dorn's Free Zoom
+3. Configure binds in MCM -> Dorn's Free Zoom
 
 ## See my other mods here:
 
