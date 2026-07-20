@@ -1,4 +1,4 @@
-v1.2.2
+v0.2.2
 
 NOTE: Redo your config
 
