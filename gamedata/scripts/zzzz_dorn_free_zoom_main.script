@@ -41,8 +41,8 @@ local CONFIG = {
 -- Independent layers. ADS% + free% add (hard-capped at 50 total).
 local free_on = false
 local ads_on = false
--- DIK currently holding free zoom (hold mode); cleared on release / cancel.
-local hold_free_key = nil
+-- Hold mode: DIK currently down (so we keep try_free_on + know what to release). Nil otherwise.
+local hold_key_down = nil
 
 -- World context. Priority order is encoded in get_context().
 local CTX = {
@@ -433,13 +433,12 @@ local function sync_free_speed()
 	end
 end
 
--- Full reset: hip FOV, clear speed (death / disable / net destroy).
+-- Full reset: hip FOV, clear speed.
 local function reset_session(resync_options, reason)
 	local prev = mode_label()
 	set_freezoom_speed(false)
 	free_on = false
 	ads_on = false
-	hold_free_key = nil
 	reset_scroll_accum()
 	if resync_options then
 		sync_base_fov_from_options()
@@ -457,12 +456,10 @@ end
 -- Drop free layer only (keep ADS).
 local function clear_free(reason)
 	if not free_on then
-		hold_free_key = nil
 		return
 	end
 	logf("auto-out: leaving FREE because %s mode=%s", tostring(reason), mode_label())
 	free_on = false
-	hold_free_key = nil
 	reset_scroll_accum()
 	sync_free_speed()
 	apply_desired_fov()
@@ -512,17 +509,14 @@ local function set_free(want_free, source)
 			return false
 		end
 		if free_on then
-			logf("free on no-op: source=%s mode=%s", source, mode_label())
-			return false
+			return true
 		end
 		free_on = true
 	else
 		if not free_on then
-			logf("free out no-op: source=%s mode=%s", source, mode_label())
 			return false
 		end
 		free_on = false
-		hold_free_key = nil
 		reset_scroll_accum()
 	end
 
@@ -541,6 +535,11 @@ local function set_free(want_free, source)
 	return true
 end
 
+-- Gated zoom-in attempt (keys / scroll / hold-retry). Fails closed if blocked.
+local function try_free_on(source)
+	return set_free(true, source)
+end
+
 -- ADS on/off. Keeps free_on; ADS% + free% add up to the 50% hard cap.
 local function set_ads(want_ads, source)
 	source = source or "set_ads"
@@ -555,7 +554,6 @@ local function set_ads(want_ads, source)
 		if is_optical_ads() then
 			if free_on then
 				free_on = false
-				hold_free_key = nil
 				reset_scroll_accum()
 				sync_free_speed()
 			end
@@ -589,7 +587,6 @@ end
 -- Drop free + ADS and restore hip FOV (weapon lower / item swap).
 local function reset_zoom(reason)
 	if not free_on and not ads_on then
-		hold_free_key = nil
 		reset_scroll_accum()
 		return
 	end
@@ -668,16 +665,8 @@ local function on_option_change()
 	end
 
 	sync_base_fov_from_options()
-
-	if free_on and CONFIG.free_zoom <= 0 then
-		log("opts: free_zoom=0%% while free_on; forcing free off")
-		free_on = false
-	end
-
-	sync_free_speed()
-	-- Re-apply when we own FOV (not optical). Includes ADS iron + free stack.
-	apply_desired_fov()
-	handle_context(get_context())
+	-- Leave free/ADS zoom whenever options change (ours or video FOV / sens).
+	reset_session(false, "opts")
 
 	UnregisterScriptCallback("on_mouse_wheel", on_mouse_wheel)
 	if CONFIG.scroll_wheel then
@@ -716,6 +705,9 @@ local function actor_on_first_update()
 	)
 end
 
+-- Forward decl (defined with key handlers below).
+local poll_hold_zoom
+
 local function actor_on_update()
 	if not DORN or not DORN.sys.ready(MOD_ID, db, on_option_change) then
 		return
@@ -736,10 +728,16 @@ local function actor_on_update()
 	end
 
 	handle_context(get_context())
+	poll_hold_zoom()
 end
 
 -- key_toggle_mode: 0=single, 1=double, 2=long, 3=hold (in on down, out on up).
+-- modifier 0 = no extra modifier required (not "forbid Shift/Ctrl/Alt").
+-- Otherwise MCM's MOD_NONE fails when the bind itself is a modifier key.
 local function mod_ok(modifier)
+	if not modifier or modifier == 0 then
+		return true
+	end
 	if not (ui_mcm and ui_mcm.get_mod_key) then
 		return true
 	end
@@ -754,6 +752,17 @@ local function keys_blocked_ctx()
 	return nil
 end
 
+-- Hold: while key is down, keep calling try_free_on (gates decide).
+poll_hold_zoom = function()
+	if not hold_key_down or CONFIG.key_toggle_mode ~= MODE_HOLD then
+		return
+	end
+	if not mod_ok(CONFIG.key_toggle_modifier) then
+		return
+	end
+	try_free_on("key_hold")
+end
+
 local function toggle_key_match(key)
 	return CONFIG.key_toggle and key == CONFIG.key_toggle
 end
@@ -766,6 +775,15 @@ local function on_key_press(key)
 		return
 	end
 
+	local km = CONFIG.key_toggle_mode
+	if km == MODE_HOLD then
+		hold_key_down = key
+		if mod_ok(CONFIG.key_toggle_modifier) then
+			try_free_on("key_hold")
+		end
+		return
+	end
+
 	local blocked = keys_blocked_ctx()
 	if blocked then
 		logf("key ignored: key=%s ctx=%s mode=%s", tostring(key), blocked, mode_label())
@@ -775,14 +793,6 @@ local function on_key_press(key)
 		return
 	end
 
-	local km = CONFIG.key_toggle_mode
-	if km == MODE_HOLD then
-		logf("key: hold-in (mode=%s)", mode_label())
-		if set_free(true, "key_hold") then
-			hold_free_key = key
-		end
-		return
-	end
 	if km == MODE_DOUBLE then
 		if ui_mcm and ui_mcm.double_tap and ui_mcm.double_tap(MOD_ID .. "_toggle", key) then
 			logf("key: double (mode=%s)", mode_label())
@@ -826,9 +836,8 @@ local function on_key_release(key)
 	if not CONFIG.enabled then
 		return
 	end
-	if hold_free_key and key == hold_free_key then
-		logf("key: hold-out key=%s mode=%s", tostring(key), mode_label())
-		hold_free_key = nil
+	if hold_key_down and key == hold_key_down then
+		hold_key_down = nil
 		set_free(false, "key_hold_release")
 	end
 end
@@ -873,7 +882,11 @@ on_mouse_wheel = function(dir, flags)
 	if scroll_count >= CONFIG.scroll_steps then
 		reset_scroll_accum()
 		logf("scroll: fire want_in=%s steps=%d mode=%s", tostring(want_in), CONFIG.scroll_steps, mode_label())
-		set_free(want_in, "scroll")
+		if want_in then
+			try_free_on("scroll")
+		else
+			set_free(false, "scroll")
+		end
 	end
 
 	-- Gameplay with scroll free-zoom on: consume so the wheel does not switch weapons.
@@ -922,7 +935,6 @@ local function actor_on_weapon_zoom_type_changed()
 	if optical then
 		if free_on then
 			free_on = false
-			hold_free_key = nil
 			reset_scroll_accum()
 			sync_free_speed()
 		end
@@ -972,6 +984,7 @@ end
 
 local function actor_on_net_destroy()
 	reset_session(true, "net_destroy")
+	hold_key_down = nil
 	wpn = nil
 	last_sec = nil
 	last_item_id = nil
