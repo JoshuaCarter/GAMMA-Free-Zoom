@@ -140,18 +140,6 @@ function on_mcm_load()
 						text = "ui_mcm_dorn_free_zoom_mouse_wheel_header",
 					},
 					{
-						id = "lmb_zoom",
-						type = kb_mod,
-						val = 2,
-						def = 0,
-						hint = "dorn_free_zoom_lmb_zoom",
-						content = {
-							{ 0, "dorn_free_zoom_mouse_mode_no" },
-							{ 1, "dorn_free_zoom_mouse_mode_toggle" },
-							{ 2, "dorn_free_zoom_mouse_mode_hold" },
-						},
-					},
-					{
 						id = "rmb_zoom",
 						type = kb_mod,
 						val = 2,

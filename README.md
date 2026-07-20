@@ -6,7 +6,7 @@ Same idea as **Kute's Free Zoom Rewrite**, but:
 
 - Extensive keyboard/mouse input support
   - One **zoom in/out** keybind (single / double / long / hold).
-  - **LMB / RMB / MMB** free zoom (No / Toggle / Hold).
+  - **RMB / MMB** free zoom (Off / Toggle / Hold).
   - Supports **scroll wheel** free zoom and plays nice with ADS/scopes.
 - Optional **HUD FOV** sync.
 - Optional **empty hands only** free zoom.

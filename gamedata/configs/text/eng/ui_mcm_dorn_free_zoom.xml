@@ -24,26 +24,20 @@
 	<string id="ui_mcm_dorn_free_zoom_mouse_wheel_header">
 		<text>Mouse</text>
 	</string>
-	<string id="ui_mcm_dorn_free_zoom_lmb_zoom">
-		<text>LMB to zoom</text>
-	</string>
 	<string id="ui_mcm_dorn_free_zoom_rmb_zoom">
 		<text>RMB to zoom</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_mmb_zoom">
 		<text>MMB to zoom</text>
 	</string>
-	<string id="ui_mcm_dorn_free_zoom_lmb_zoom_desc">
-		<text>Toggle: flip zoom on click. Hold: zoom in while held.</text>
-	</string>
 	<string id="ui_mcm_dorn_free_zoom_rmb_zoom_desc">
-		<text>Toggle: flip zoom on click. Hold: zoom in while held.</text>
+		<text>Toggle: flip zoom on click. Hold: zoom in while held. Does not consume ADS.</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_mmb_zoom_desc">
 		<text>Toggle: flip zoom on click. Hold: zoom in while held.</text>
 	</string>
 	<string id="ui_mcm_lst_dorn_free_zoom_mouse_mode_no">
-		<text>No</text>
+		<text>Off</text>
 	</string>
 	<string id="ui_mcm_lst_dorn_free_zoom_mouse_mode_toggle">
 		<text>Toggle</text>
