@@ -19,10 +19,37 @@
 		<text>Zoom</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_keybind_header">
-		<text>Keybind</text>
+		<text>Keyboard</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_mouse_wheel_header">
-		<text>Mouse Wheel</text>
+		<text>Mouse</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_lmb_zoom">
+		<text>LMB to zoom</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_rmb_zoom">
+		<text>RMB to zoom</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_mmb_zoom">
+		<text>MMB to zoom</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_lmb_zoom_desc">
+		<text>Toggle: flip free zoom on click. Hold: zoom in while held.</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_rmb_zoom_desc">
+		<text>Toggle: flip free zoom on click. Hold: zoom in while held.</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_mmb_zoom_desc">
+		<text>Toggle: flip free zoom on click. Hold: zoom in while held.</text>
+	</string>
+	<string id="ui_mcm_lst_dorn_free_zoom_mouse_mode_no">
+		<text>No</text>
+	</string>
+	<string id="ui_mcm_lst_dorn_free_zoom_mouse_mode_toggle">
+		<text>Toggle</text>
+	</string>
+	<string id="ui_mcm_lst_dorn_free_zoom_mouse_mode_hold">
+		<text>Hold</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_empty_hands_only">
 		<text>Restrict zoom to empty hands</text>

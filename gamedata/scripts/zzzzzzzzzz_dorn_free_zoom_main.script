@@ -20,12 +20,23 @@ local MODE_DOUBLE = 1
 local MODE_LONG = 2
 local MODE_HOLD = 3
 
+-- Mouse button zoom: 0=no, 1=toggle, 2=hold
+local MOUSE_NONE = 0
+local MOUSE_TOGGLE = 1
+local MOUSE_HOLD = 2
+local DIK_LMB = 337
+local DIK_RMB = 338
+local DIK_MMB = 339
+
 local CONFIG = {
 	enabled = true,
 	empty_hands_only = false,
 	zoom_key = nil,
 	zoom_key_modifier = 0,
 	zoom_key_mode = MODE_SINGLE,
+	lmb_zoom = MOUSE_NONE,
+	rmb_zoom = MOUSE_NONE,
+	mmb_zoom = MOUSE_NONE,
 	scroll_wheel_zoom = false,
 	scroll_wheel_reverse = false,
 	scroll_wheel_steps = 1,
@@ -40,8 +51,8 @@ local CONFIG = {
 
 local free_on = false
 local ads_on = false
--- Hold mode: DIK currently down (retry set_free_zoom while held). Nil otherwise.
-local hold_zoom_dik = nil
+-- Hold mode: DIKs currently down (retry set_free_zoom while any held).
+local hold_zoom_diks = {}
 
 local CTX = {
 	OK = "ok",
@@ -160,6 +171,9 @@ local function refresh_config()
 	CONFIG.zoom_key = DORN.mcm.key(MOD_ID, "main/zoom_key")
 	CONFIG.zoom_key_modifier = DORN.mcm.number(MOD_ID, "main/zoom_key_modifier", 0)
 	CONFIG.zoom_key_mode = clamp(DORN.mcm.number(MOD_ID, "main/zoom_key_mode", MODE_SINGLE), MODE_SINGLE, MODE_HOLD)
+	CONFIG.lmb_zoom = clamp(DORN.mcm.number(MOD_ID, "main/lmb_zoom", MOUSE_NONE), MOUSE_NONE, MOUSE_HOLD)
+	CONFIG.rmb_zoom = clamp(DORN.mcm.number(MOD_ID, "main/rmb_zoom", MOUSE_NONE), MOUSE_NONE, MOUSE_HOLD)
+	CONFIG.mmb_zoom = clamp(DORN.mcm.number(MOD_ID, "main/mmb_zoom", MOUSE_NONE), MOUSE_NONE, MOUSE_HOLD)
 	CONFIG.scroll_wheel_zoom = DORN.mcm.bool(MOD_ID, "main/scroll_wheel_zoom", false)
 	CONFIG.scroll_wheel_reverse = DORN.mcm.bool(MOD_ID, "main/scroll_wheel_reverse", false)
 	CONFIG.scroll_wheel_steps = clamp(DORN.mcm.number(MOD_ID, "main/scroll_wheel_steps", 1), 1, 10)
@@ -456,7 +470,9 @@ local function reset_session(resync_options, reason)
 	free_on = false
 	ads_on = false
 	ads_hud_base = nil
-	hold_zoom_dik = nil
+	for k in pairs(hold_zoom_diks) do
+		hold_zoom_diks[k] = nil
+	end
 	reset_scroll_accum()
 	if resync_options then
 		sync_hip_from_options()
@@ -729,7 +745,7 @@ local function on_option_change()
 	end
 
 	logf(
-		"opts: free=%d%% ads=%d%% speed=%d%% empty_hands=%s scroll=%s reverse=%s steps=%d gap=%dms hud=%s mode=%s key=%s mod=%d km=%d",
+		"opts: free=%d%% ads=%d%% speed=%d%% empty_hands=%s scroll=%s reverse=%s steps=%d gap=%dms hud=%s mode=%s key=%s mod=%d km=%d lmb=%d rmb=%d mmb=%d",
 		CONFIG.free_zoom,
 		CONFIG.ads_zoom,
 		CONFIG.move_speed,
@@ -742,7 +758,10 @@ local function on_option_change()
 		mode_label(),
 		tostring(CONFIG.zoom_key),
 		CONFIG.zoom_key_modifier,
-		CONFIG.zoom_key_mode
+		CONFIG.zoom_key_mode,
+		CONFIG.lmb_zoom,
+		CONFIG.rmb_zoom,
+		CONFIG.mmb_zoom
 	)
 end
 
@@ -808,28 +827,85 @@ local function keys_blocked_ctx()
 	return nil
 end
 
--- Hold: while key is down, keep trying free zoom (update already ran handle_context).
+-- Hold: while any hold DIK is down, keep trying free zoom (update already ran handle_context).
+local function hold_zoom_active()
+	for _ in pairs(hold_zoom_diks) do
+		return true
+	end
+	return false
+end
+
+local function mouse_zoom_mode(key)
+	if key == DIK_LMB then
+		return CONFIG.lmb_zoom
+	end
+	if key == DIK_RMB then
+		return CONFIG.rmb_zoom
+	end
+	if key == DIK_MMB then
+		return CONFIG.mmb_zoom
+	end
+	return nil
+end
+
+-- True if this press was handled as a mouse zoom button (mode != No).
+local function try_mouse_zoom_press(key)
+	local mm = mouse_zoom_mode(key)
+	if not mm or mm == MOUSE_NONE then
+		return false
+	end
+	if mm == MOUSE_HOLD then
+		hold_zoom_diks[key] = true
+		set_free_zoom(true, "mouse_hold")
+		return true
+	end
+	local blocked = keys_blocked_ctx()
+	if blocked then
+		logf("mouse ignored: key=%s ctx=%s mode=%s", tostring(key), blocked, mode_label())
+		return true
+	end
+	logf("mouse: toggle key=%s mode=%s", tostring(key), mode_label())
+	set_free_zoom(not free_on, "mouse_toggle")
+	return true
+end
+
 poll_hold_zoom = function()
-	if not hold_zoom_dik or CONFIG.zoom_key_mode ~= MODE_HOLD or free_on then
+	if free_on or not hold_zoom_active() then
 		return
 	end
-	if not zoom_mod_ok() then
-		return
+	-- Mouse holds never need the keyboard modifier; keyboard hold does.
+	local can = false
+	for dik in pairs(hold_zoom_diks) do
+		if mouse_zoom_mode(dik) == MOUSE_HOLD then
+			can = true
+			break
+		end
+		if dik == CONFIG.zoom_key and zoom_mod_ok() then
+			can = true
+			break
+		end
 	end
-	set_free_zoom(true, "key_hold")
+	if can then
+		set_free_zoom(true, "hold")
+	end
 end
 
 local function on_key_press(key)
 	if not DORN or not DORN.sys.ready(MOD_ID, db, on_option_change) then
 		return
 	end
+
+	if try_mouse_zoom_press(key) then
+		return
+	end
+
 	if not CONFIG.zoom_key or key ~= CONFIG.zoom_key then
 		return
 	end
 
 	local km = CONFIG.zoom_key_mode
 	if km == MODE_HOLD then
-		hold_zoom_dik = key
+		hold_zoom_diks[key] = true
 		if zoom_mod_ok() then
 			set_free_zoom(true, "key_hold")
 		end
@@ -887,9 +963,11 @@ local function on_key_release(key)
 	if not CONFIG.enabled then
 		return
 	end
-	if hold_zoom_dik and key == hold_zoom_dik then
-		hold_zoom_dik = nil
-		set_free_zoom(false, "key_hold_release")
+	if hold_zoom_diks[key] then
+		hold_zoom_diks[key] = nil
+		if not hold_zoom_active() then
+			set_free_zoom(false, "hold_release")
+		end
 	end
 end
 

@@ -1,12 +1,14 @@
-# Dorn's Free Zoom v0.2.3
+# Dorn's Free Zoom v0.2.4
 
 Free zoom for **S.T.A.L.K.E.R. G.A.M.M.A.** — based on Kute's Free Zoom with tweaks and support for scroll wheel zoom.
 
 Same idea as **Kute's Free Zoom Rewrite**, but:
 
-- One **zoom in/out** keybind (single / double / long / hold).
-- Supports **scroll wheel** free zoom and plays nice with ADS/scopes.
-- Optional **HUD FOV** sync (works with Adjustable Scope View without detecting it).
+- Extensive keyboard/mouse input support
+  - One **zoom in/out** keybind (single / double / long / hold).
+  - **LMB / RMB / MMB** free zoom (No / Toggle / Hold).
+  - Supports **scroll wheel** free zoom and plays nice with ADS/scopes.
+- Optional **HUD FOV** sync.
 - Optional **empty hands only** free zoom.
 - More opinionated/restrictive:
   - Max free zoom is 50% of FOV.
