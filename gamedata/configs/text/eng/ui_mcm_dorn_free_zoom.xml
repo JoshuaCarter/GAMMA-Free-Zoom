@@ -36,11 +36,23 @@
 	<string id="ui_mcm_dorn_free_zoom_key_toggle">
 		<text>Zoom in/out</text>
 	</string>
-	<string id="ui_mcm_dorn_free_zoom_key_zoom_in">
-		<text>Zoom in</text>
+	<string id="ui_mcm_dorn_free_zoom_key_toggle_mode">
+		<text>Key mode</text>
 	</string>
-	<string id="ui_mcm_dorn_free_zoom_key_zoom_out">
-		<text>Zoom out</text>
+	<string id="ui_mcm_dorn_free_zoom_key_toggle_mode_desc">
+		<text>Single / Double / Long: toggle zoom. Hold: zoom in on press, zoom out on release.</text>
+	</string>
+	<string id="ui_mcm_lst_dorn_free_zoom_mode_single">
+		<text>Single</text>
+	</string>
+	<string id="ui_mcm_lst_dorn_free_zoom_mode_double">
+		<text>Double</text>
+	</string>
+	<string id="ui_mcm_lst_dorn_free_zoom_mode_long">
+		<text>Long</text>
+	</string>
+	<string id="ui_mcm_lst_dorn_free_zoom_mode_hold">
+		<text>Hold</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_scroll_wheel">
 		<text>Scroll to zoom</text>

@@ -4,7 +4,7 @@ Free zoom for **S.T.A.L.K.E.R. G.A.M.M.A.** — based on Kute's Free Zoom with t
 
 Same idea as **Kute's Free Zoom Rewrite**, but:
 
-- Keybinds for **zoom in/out**, **zoom in**, and **zoom out**.
+- One **zoom in/out** keybind (with toggle vs hold behaviour).
 - Supports **scroll wheel** free zoom and plays nice with ADS/scopes.
 - More opinionated/restrictive:
   - Max free zoom is 50% of FOV.

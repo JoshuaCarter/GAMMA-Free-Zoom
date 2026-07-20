@@ -7,8 +7,8 @@
 	(Adjustable Scope View / vanilla own gun placement). Optical scope ADS owns FOV
 	(we never write); free zoom is cancelled / blocked there. Scroll passes through
 	for PDA / UI / optical / sprint. Weapon slot key / changed_slot / lower / item
-	change resets free + ADS to hip. Keys support MCM press / double-tap / hold and
-	optional Shift/Ctrl/Alt.
+	change resets free + ADS to hip. One zoom in/out keybind with single / double /
+	long / hold modes and optional Shift/Ctrl/Alt.
 ]]
 
 local MOD_ID = "dorn_free_zoom"
@@ -16,15 +16,17 @@ local DORN_COMMON_VERSION = "dorn_common_442e61f8" -- managed by sync-dorn-commo
 
 local DORN
 
+-- key_toggle_mode: 0=single, 1=double, 2=long, 3=hold (in on down, out on up)
+local MODE_SINGLE = 0
+local MODE_DOUBLE = 1
+local MODE_LONG = 2
+local MODE_HOLD = 3
+
 local CONFIG = {
 	enabled = true,
 	key_toggle = nil,
 	key_toggle_modifier = 0,
-	key_toggle_mode = 0,
-	key_zoom_in = nil,
-	key_zoom_out = nil,
-	key_inout_modifier = 0,
-	key_inout_mode = 0,
+	key_toggle_mode = MODE_SINGLE,
 	scroll_wheel = false,
 	reverse_scroll = false,
 	scroll_steps = 1,
@@ -132,11 +134,10 @@ local function refresh_config()
 	CONFIG.enabled = DORN.mcm.bool(MOD_ID, "zoom/enabled", true)
 	CONFIG.key_toggle = DORN.mcm.key(MOD_ID, "keybinds/key_toggle")
 	CONFIG.key_toggle_modifier = math.floor(DORN.mcm.number(MOD_ID, "keybinds/key_toggle_modifier", 0) + 0.5)
-	CONFIG.key_toggle_mode = math.floor(DORN.mcm.number(MOD_ID, "keybinds/key_toggle_mode", 0) + 0.5)
-	CONFIG.key_zoom_in = DORN.mcm.key(MOD_ID, "keybinds/key_zoom_in")
-	CONFIG.key_zoom_out = DORN.mcm.key(MOD_ID, "keybinds/key_zoom_out")
-	CONFIG.key_inout_modifier = math.floor(DORN.mcm.number(MOD_ID, "keybinds/key_inout_modifier", 0) + 0.5)
-	CONFIG.key_inout_mode = math.floor(DORN.mcm.number(MOD_ID, "keybinds/key_inout_mode", 0) + 0.5)
+	CONFIG.key_toggle_mode = math.floor(DORN.mcm.number(MOD_ID, "keybinds/key_toggle_mode", MODE_SINGLE) + 0.5)
+	if CONFIG.key_toggle_mode < MODE_SINGLE or CONFIG.key_toggle_mode > MODE_HOLD then
+		CONFIG.key_toggle_mode = MODE_SINGLE
+	end
 	CONFIG.scroll_wheel = DORN.mcm.bool(MOD_ID, "mouse_wheel/scroll_wheel", false)
 	CONFIG.reverse_scroll = DORN.mcm.bool(MOD_ID, "mouse_wheel/reverse_scroll", false)
 	CONFIG.scroll_steps = math.floor(DORN.mcm.number(MOD_ID, "mouse_wheel/scroll_steps", 1) + 0.5)
@@ -669,7 +670,7 @@ local function on_option_change()
 	end
 
 	logf(
-		"opts: free=%d%% ads=%d%% speed=%d%% scroll=%s reverse=%s steps=%d gap=%dms mode=%s keys=t:%s/in:%s/out:%s tmod=%d/%d iomod=%d/%d",
+		"opts: free=%d%% ads=%d%% speed=%d%% scroll=%s reverse=%s steps=%d gap=%dms mode=%s key=%s mod=%d km=%d",
 		CONFIG.free_zoom,
 		CONFIG.ads_zoom,
 		CONFIG.move_speed,
@@ -679,12 +680,8 @@ local function on_option_change()
 		CONFIG.scroll_max_gap_ms,
 		mode_label(),
 		tostring(CONFIG.key_toggle),
-		tostring(CONFIG.key_zoom_in),
-		tostring(CONFIG.key_zoom_out),
 		CONFIG.key_toggle_modifier,
-		CONFIG.key_toggle_mode,
-		CONFIG.key_inout_modifier,
-		CONFIG.key_inout_mode
+		CONFIG.key_toggle_mode
 	)
 end
 
@@ -725,7 +722,7 @@ local function actor_on_update()
 	handle_context(get_context())
 end
 
--- MCM key modes: 0 = press, 1 = double-tap, 2 = hold (zoom while held).
+-- key_toggle_mode: 0=single, 1=double, 2=long, 3=hold (in on down, out on up).
 local function mod_ok(modifier)
 	if not (ui_mcm and ui_mcm.get_mod_key) then
 		return true
@@ -741,106 +738,72 @@ local function keys_blocked_ctx()
 	return nil
 end
 
+local function toggle_key_match(key)
+	return CONFIG.key_toggle and key == CONFIG.key_toggle
+end
+
 local function on_key_press(key)
 	if not DORN or not DORN.sys.ready(MOD_ID, db, on_option_change) then
 		return
 	end
+	if not toggle_key_match(key) then
+		return
+	end
+
 	local blocked = keys_blocked_ctx()
 	if blocked then
-		if (CONFIG.key_toggle and key == CONFIG.key_toggle)
-			or (CONFIG.key_zoom_in and key == CONFIG.key_zoom_in)
-			or (CONFIG.key_zoom_out and key == CONFIG.key_zoom_out)
-		then
-			logf("key ignored: key=%s ctx=%s mode=%s", tostring(key), blocked, mode_label())
-		end
+		logf("key ignored: key=%s ctx=%s mode=%s", tostring(key), blocked, mode_label())
+		return
+	end
+	if not mod_ok(CONFIG.key_toggle_modifier) then
 		return
 	end
 
-	-- Zoom in/out key (toggle / hold / double-tap).
-	if CONFIG.key_toggle and key == CONFIG.key_toggle then
-		if not mod_ok(CONFIG.key_toggle_modifier) then
-			return
-		end
-		local km = CONFIG.key_toggle_mode
-		if km == 2 then
-			logf("key: toggle hold-in (mode=%s)", mode_label())
-			if set_free(true, "key_toggle_hold") then
-				hold_free_key = key
-			end
-			return
-		end
-		if km == 1 then
-			if ui_mcm and ui_mcm.double_tap and ui_mcm.double_tap(MOD_ID .. "_toggle", key) then
-				logf("key: toggle dtap (mode=%s)", mode_label())
-				set_free(not free_on, "key_toggle_dtap")
-			end
-			return
-		end
-		-- Press: exclusive simple_press when MCM key helpers exist.
-		if ui_mcm and ui_mcm.simple_press then
-			ui_mcm.simple_press(MOD_ID .. "_toggle", key, function()
-				set_free(not free_on, "key_toggle")
-			end)
-		else
-			set_free(not free_on, "key_toggle")
+	local km = CONFIG.key_toggle_mode
+	if km == MODE_HOLD then
+		logf("key: hold-in (mode=%s)", mode_label())
+		if set_free(true, "key_hold") then
+			hold_free_key = key
 		end
 		return
 	end
-
-	-- Dedicated zoom-in / zoom-out (shared modifier + mode).
-	if CONFIG.key_zoom_in and key == CONFIG.key_zoom_in then
-		if not mod_ok(CONFIG.key_inout_modifier) then
-			return
-		end
-		local km = CONFIG.key_inout_mode
-		if km == 2 then
-			logf("key: zoom_in hold (mode=%s)", mode_label())
-			if set_free(true, "key_zoom_in_hold") then
-				hold_free_key = key
-			end
-			return
-		end
-		if km == 1 then
-			if ui_mcm and ui_mcm.double_tap and ui_mcm.double_tap(MOD_ID .. "_zoom_in", key) then
-				set_free(true, "key_zoom_in_dtap")
-			end
-			return
-		end
-		if ui_mcm and ui_mcm.simple_press then
-			ui_mcm.simple_press(MOD_ID .. "_zoom_in", key, function()
-				set_free(true, "key_zoom_in")
-			end)
-		else
-			set_free(true, "key_zoom_in")
+	if km == MODE_DOUBLE then
+		if ui_mcm and ui_mcm.double_tap and ui_mcm.double_tap(MOD_ID .. "_toggle", key) then
+			logf("key: double (mode=%s)", mode_label())
+			set_free(not free_on, "key_double")
 		end
 		return
 	end
-
-	if CONFIG.key_zoom_out and key == CONFIG.key_zoom_out then
-		if not mod_ok(CONFIG.key_inout_modifier) then
-			return
-		end
-		local km = CONFIG.key_inout_mode
-		if km == 2 then
-			-- Hold-mode out: press cancels free (release is a no-op).
-			set_free(false, "key_zoom_out_hold")
-			hold_free_key = nil
-			return
-		end
-		if km == 1 then
-			if ui_mcm and ui_mcm.double_tap and ui_mcm.double_tap(MOD_ID .. "_zoom_out", key) then
-				set_free(false, "key_zoom_out_dtap")
-			end
-			return
-		end
-		if ui_mcm and ui_mcm.simple_press then
-			ui_mcm.simple_press(MOD_ID .. "_zoom_out", key, function()
-				set_free(false, "key_zoom_out")
-			end)
-		else
-			set_free(false, "key_zoom_out")
-		end
+	if km == MODE_LONG then
+		-- Long press is handled in on_key_hold.
+		return
 	end
+	-- Single: toggle immediately on press.
+	logf("key: single (mode=%s)", mode_label())
+	set_free(not free_on, "key_single")
+end
+
+local function on_key_hold(key)
+	if not DORN or not DORN.sys.ready(MOD_ID, db, on_option_change) then
+		return
+	end
+	if CONFIG.key_toggle_mode ~= MODE_LONG then
+		return
+	end
+	if not toggle_key_match(key) then
+		return
+	end
+	if keys_blocked_ctx() then
+		return
+	end
+	if not mod_ok(CONFIG.key_toggle_modifier) then
+		return
+	end
+	if not (ui_mcm and ui_mcm.key_hold and ui_mcm.key_hold(MOD_ID .. "_toggle", key)) then
+		return
+	end
+	logf("key: long (mode=%s)", mode_label())
+	set_free(not free_on, "key_long")
 end
 
 local function on_key_release(key)
@@ -1007,6 +970,7 @@ function on_game_start()
 	RegisterScriptCallback("actor_on_first_update", actor_on_first_update)
 	RegisterScriptCallback("on_before_key_press", on_before_key_press)
 	RegisterScriptCallback("on_key_press", on_key_press)
+	RegisterScriptCallback("on_key_hold", on_key_hold)
 	RegisterScriptCallback("on_key_release", on_key_release)
 	RegisterScriptCallback("actor_on_weapon_zoom_out", actor_on_weapon_zoom_out)
 	RegisterScriptCallback("actor_on_weapon_zoom_in", actor_on_weapon_zoom_in)
