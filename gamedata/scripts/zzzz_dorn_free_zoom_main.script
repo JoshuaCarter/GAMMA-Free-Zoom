@@ -3,10 +3,12 @@
 	control.
 
 	Free zoom and ADS are independent layers that add (ADS% + free%), hard-capped
-	at 50% total FOV shrink. Optical scope ADS owns FOV (we never write); free zoom
-	is cancelled / blocked there. Scroll passes through for PDA / UI / optical / sprint.
-	Weapon slot key / changed_slot / lower / item change resets free + ADS to hip.
-	Keys support MCM press / double-tap / hold and optional Shift/Ctrl/Alt.
+	at 50% total FOV shrink. We only write world fov + mouse_sens — never hud_fov
+	(Adjustable Scope View / vanilla own gun placement). Optical scope ADS owns FOV
+	(we never write); free zoom is cancelled / blocked there. Scroll passes through
+	for PDA / UI / optical / sprint. Weapon slot key / changed_slot / lower / item
+	change resets free + ADS to hip. Keys support MCM press / double-tap / hold and
+	optional Shift/Ctrl/Alt.
 ]]
 
 local MOD_ID = "dorn_free_zoom"
@@ -75,11 +77,8 @@ local CTX_SCROLL_PASS = {
 }
 
 local fov_before = 60
-local hud_fov_before = 1
 local mouse_sens_before = 0.5
 local mouse_to_fov = 0.5
-local hud_to_fov = 0.5
-local hud_fov_backup = 1
 
 local wpn = nil
 local last_sec = nil
@@ -377,19 +376,16 @@ local function set_freezoom_speed(active)
 	end
 end
 
+-- World fov + mouse_sens only. Never write hud_fov (ASV / vanilla own the gun).
 local function apply_console(fov)
 	exec_console_cmd("fov " .. fov)
 	exec_console_cmd("mouse_sens " .. fov * mouse_to_fov)
-	if not ads_on then
-		exec_console_cmd("hud_fov " .. fov * hud_to_fov)
-	end
 end
 
--- Hip baseline to console. Used when handing FOV off to optical / ASV.
+-- Hip world FOV to console. Used when handing FOV off to optical / ASV.
 local function restore_hip_console()
 	exec_console_cmd("fov " .. fov_before)
 	exec_console_cmd("mouse_sens " .. fov_before * mouse_to_fov)
-	exec_console_cmd("hud_fov " .. hud_fov_before)
 end
 
 -- Set target FOV when we own the view. Optical ADS: no-op.
@@ -404,17 +400,13 @@ end
 -- Hip baseline from options (not live console, which may already be zoomed).
 local function sync_base_fov_from_options()
 	local fov = ui_options and ui_options.get("video/basic/fov")
-	local hud = ui_options and ui_options.get("video/basic/hud_fov")
 	local sens = ui_options and ui_options.get("control/general/mouse_sens")
 	fov_before = fov or get_console_cmd(2, "fov")
-	hud_fov_before = hud or get_console_cmd(2, "hud_fov")
 	mouse_sens_before = sens or get_console_cmd(2, "mouse_sens")
 	if not fov_before or fov_before <= 0 then
 		fov_before = 75
 	end
 	mouse_to_fov = mouse_sens_before / fov_before
-	hud_to_fov = hud_fov_before / fov_before
-	hud_fov_backup = hud_fov_before
 end
 
 local function sync_free_speed()
@@ -438,12 +430,11 @@ local function reset_session(resync_options, reason)
 	end
 	apply_desired_fov()
 	logf(
-		"reset: reason=%s prev=%s resync=%s fov=%.2f hud=%.3f",
+		"reset: reason=%s prev=%s resync=%s fov=%.2f",
 		tostring(reason or "?"),
 		prev,
 		tostring(resync_options and true or false),
-		fov_before,
-		hud_fov_before
+		fov_before
 	)
 end
 
@@ -508,10 +499,6 @@ local function set_free(want_free, source)
 			logf("free on no-op: source=%s mode=%s", source, mode_label())
 			return false
 		end
-		-- Hip free may have scaled hud_fov; restore before ADS owns it.
-		if ads_on then
-			exec_console_cmd("hud_fov " .. hud_fov_before)
-		end
 		free_on = true
 	else
 		if not free_on then
@@ -547,11 +534,6 @@ local function set_ads(want_ads, source)
 		if ads_on then
 			return false
 		end
-		-- Free zoom may have scaled hud_fov; restore before ADS / ASV owns it.
-		if free_on then
-			exec_console_cmd("hud_fov " .. hud_fov_before)
-			logf("ads: restore hip hud_fov=%.3f before ADS", hud_fov_before)
-		end
 		ads_on = true
 		-- Optical: do not write FOV (and drop free like Kute).
 		if is_optical_ads() then
@@ -561,7 +543,7 @@ local function set_ads(want_ads, source)
 				reset_scroll_accum()
 				sync_free_speed()
 			end
-			-- Clear any free/iron FOV we wrote so scope/ASV starts clean.
+			-- Clear any free/iron world FOV we wrote so scope/ASV starts clean.
 			restore_hip_console()
 			logf("ads: source=%s mode=%s optical=true (FOV left alone) wpn=%s", source, mode_label(), wpn_label())
 			return true
@@ -596,8 +578,6 @@ local function reset_zoom(reason)
 		return
 	end
 	logf("zoom reset: reason=%s was=%s", tostring(reason), mode_label())
-	hud_fov_before = hud_fov_backup
-	hud_to_fov = hud_fov_before / fov_before
 	reset_session(false, reason)
 end
 
@@ -716,9 +696,8 @@ local function actor_on_first_update()
 	sync_base_fov_from_options()
 	apply_desired_fov()
 	logf(
-		"first_update: ready fov=%.2f hud=%.3f sens=%.3f mode=%s",
+		"first_update: ready fov=%.2f sens=%.3f mode=%s",
 		fov_before,
-		hud_fov_before,
 		mouse_sens_before,
 		mode_label()
 	)
