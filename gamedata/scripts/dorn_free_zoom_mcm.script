@@ -51,6 +51,13 @@ function on_mcm_load()
 						hint = "dorn_free_zoom_exit_ads_clears_free",
 					},
 					{
+						id = "reload_clears_free",
+						type = "check",
+						val = 1,
+						def = true,
+						hint = "dorn_free_zoom_reload_clears_free",
+					},
+					{
 						id = "free_zoom",
 						type = "track",
 						val = 2,

@@ -46,6 +46,7 @@ local CONFIG = {
 	move_speed = 70,
 	hud_fov_zoom = false,
 	exit_ads_clears_free = true,
+	reload_clears_free = true,
 	debug_log = false,
 }
 
@@ -73,7 +74,7 @@ local CTX_BLOCK_FREE = {
 	[CTX.DEAD] = true,
 	[CTX.PDA] = true,
 	[CTX.GUI] = true,
-	[CTX.RELOAD] = true,
+	[CTX.RELOAD] = true, -- gated by CONFIG.reload_clears_free in blocks_free()
 	[CTX.OPTICAL] = true,
 	[CTX.SPRINT] = true,
 	[CTX.NO_GUN] = true,
@@ -184,6 +185,7 @@ local function refresh_config()
 	CONFIG.move_speed = clamp(DORN.mcm.number(MOD_ID, "main/move_speed", 70), 0, 70)
 	CONFIG.hud_fov_zoom = DORN.mcm.bool(MOD_ID, "main/hud_fov_zoom", false)
 	CONFIG.exit_ads_clears_free = DORN.mcm.bool(MOD_ID, "main/exit_ads_clears_free", true)
+	CONFIG.reload_clears_free = DORN.mcm.bool(MOD_ID, "main/reload_clears_free", true)
 	CONFIG.debug_log = DORN.mcm.bool(MOD_ID, "development/debug_log", false)
 end
 
@@ -254,27 +256,7 @@ local function weapon_reloading()
 	return wpn:get_state() == 7
 end
 
--- Firearm in hands (not empty / knife / melee / grenade / bolt).
-local function holding_zoomable_weapon()
-	if not wpn then
-		return false
-	end
-	if not wpn:cast_Weapon() then
-		return false
-	end
-	if IsGrenade(wpn) or IsBolt(wpn) then
-		return false
-	end
-	if IsMelee and IsMelee(wpn) then
-		return false
-	end
-	if IsWeapon and not IsWeapon(wpn) then
-		return false
-	end
-	return true
-end
-
--- Medkit / bandage / sprint-lower / dialog lower, etc.
+-- Medkit / bandage / food / drink / sprint-lower / dialog lower, etc.
 local function weapon_is_lowered()
 	return game and game.actor_weapon_lowered and game.actor_weapon_lowered() or false
 end
@@ -302,6 +284,20 @@ local function actor_sprinting()
 	return IsMoveState("mcSprint")
 end
 
+-- True empty hands: holstered slot and no detector/scanner in hand.
+local function hands_are_empty()
+	if not (db and db.actor) then
+		return false
+	end
+	if db.actor:active_slot() ~= 0 then
+		return false
+	end
+	if db.actor.active_detector and db.actor:active_detector() then
+		return false
+	end
+	return true
+end
+
 local function get_context()
 	if not CONFIG.enabled then
 		return CTX.DISABLED
@@ -316,8 +312,12 @@ local function get_context()
 		return CTX.PDA
 	end
 	refresh_wpn()
+	-- Consumables (eat/drink/meds) lower the weapon — block free zoom either mode.
+	if weapon_is_lowered() then
+		return CTX.LOWERED
+	end
 	if CONFIG.empty_hands_only then
-		if wpn then
+		if not hands_are_empty() then
 			return CTX.HANDS_FULL
 		end
 		if actor_sprinting() then
@@ -325,12 +325,7 @@ local function get_context()
 		end
 		return CTX.OK
 	end
-	if not holding_zoomable_weapon() then
-		return CTX.NO_GUN
-	end
-	if weapon_is_lowered() then
-		return CTX.LOWERED
-	end
+	-- Any equipped slot (gun, knife, detector, empty hands). Not firearm-only.
 	if weapon_reloading() then
 		return CTX.RELOAD
 	end
@@ -491,7 +486,41 @@ local function reset_session(resync_options, reason)
 	)
 end
 
+local function hold_zoom_active()
+	for _ in pairs(hold_zoom_diks) do
+		return true
+	end
+	return false
+end
+
+local function cancel_hold_zoom(reason)
+	if not hold_zoom_active() then
+		return
+	end
+	for k in pairs(hold_zoom_diks) do
+		hold_zoom_diks[k] = nil
+	end
+	logf("hold cancelled: %s", tostring(reason or "?"))
+end
+
+local function dik_is_down(dik)
+	return (key_state(dik) or 0) ~= 0
+end
+
+-- RELOAD is in CTX_BLOCK_FREE but only when reload_clears_free is on.
+local function blocks_free(ctx)
+	if not CTX_BLOCK_FREE[ctx] then
+		return false
+	end
+	if ctx == CTX.RELOAD then
+		return CONFIG.reload_clears_free
+	end
+	return true
+end
+
 local function clear_free_zoom(reason)
+	-- Always drop hold arming so poll cannot re-zoom after a block / lost release.
+	cancel_hold_zoom(reason)
 	if not free_on then
 		return
 	end
@@ -509,20 +538,26 @@ local function handle_context(ctx)
 	end
 
 	if ctx == CTX.DISABLED or ctx == CTX.DEAD then
-		if free_on or ads_on then
+		if free_on or ads_on or hold_zoom_active() then
 			reset_session(true, ctx)
 		end
 		return ctx
 	end
 
 	-- No gun / weapon lowered (medkit etc.): drop free + ADS so we don't fight use anims.
-	if (ctx == CTX.NO_GUN or ctx == CTX.LOWERED) and (free_on or ads_on) then
+	if (ctx == CTX.NO_GUN or ctx == CTX.LOWERED) and (free_on or ads_on or hold_zoom_active()) then
 		reset_session(false, ctx)
 		return ctx
 	end
 
-	if free_on and CTX_BLOCK_FREE[ctx] then
-		clear_free_zoom(ctx)
+	if blocks_free(ctx) then
+		-- Reload / ammo wheel / sprint / etc.: cancel hold even if free was already off,
+		-- otherwise a held button (or lost release) re-zooms when the block ends.
+		if free_on then
+			clear_free_zoom(ctx)
+		else
+			cancel_hold_zoom(ctx)
+		end
 	end
 	return ctx
 end
@@ -535,7 +570,7 @@ local function set_free_zoom(want_free, source)
 
 	if want_free then
 		ctx = get_context()
-		if CTX_BLOCK_FREE[ctx] then
+		if blocks_free(ctx) then
 			logf("free denied: source=%s reason=ctx=%s mode=%s", source, ctx, mode_label())
 			return false
 		end
@@ -599,6 +634,7 @@ local function set_ads_zoom(want_ads, source)
 		ads_on = false
 		ads_hud_base = nil
 		if CONFIG.exit_ads_clears_free and free_on then
+			cancel_hold_zoom("exit_ads")
 			free_on = false
 			reset_scroll_accum()
 			set_zoom_move_speed(false)
@@ -828,13 +864,6 @@ local function keys_blocked_ctx()
 end
 
 -- Hold: while any hold DIK is down, keep trying free zoom (update already ran handle_context).
-local function hold_zoom_active()
-	for _ in pairs(hold_zoom_diks) do
-		return true
-	end
-	return false
-end
-
 local function mouse_zoom_mode(key)
 	if key == DIK_LMB then
 		return CONFIG.lmb_zoom
@@ -848,6 +877,10 @@ local function mouse_zoom_mode(key)
 	return nil
 end
 
+local function free_zoom_blocked()
+	return blocks_free(get_context())
+end
+
 -- True if this press was handled as a mouse zoom button (mode != No).
 local function try_mouse_zoom_press(key)
 	local mm = mouse_zoom_mode(key)
@@ -855,6 +888,10 @@ local function try_mouse_zoom_press(key)
 		return false
 	end
 	if mm == MOUSE_HOLD then
+		-- Do not arm hold during reload/UI/sprint — press repeats + lost releases stick zoom.
+		if free_zoom_blocked() then
+			return true
+		end
 		hold_zoom_diks[key] = true
 		set_free_zoom(true, "mouse_hold")
 		return true
@@ -870,7 +907,21 @@ local function try_mouse_zoom_press(key)
 end
 
 poll_hold_zoom = function()
-	if free_on or not hold_zoom_active() then
+	-- Drop DIKs that are no longer physically down (release lost to reload / ammo UI / fire).
+	local lost = false
+	for dik in pairs(hold_zoom_diks) do
+		if not dik_is_down(dik) then
+			hold_zoom_diks[dik] = nil
+			lost = true
+		end
+	end
+	if not hold_zoom_active() then
+		if lost and free_on then
+			set_free_zoom(false, "hold_key_up")
+		end
+		return
+	end
+	if free_on or free_zoom_blocked() then
 		return
 	end
 	-- Mouse holds never need the keyboard modifier; keyboard hold does.
@@ -905,6 +956,9 @@ local function on_key_press(key)
 
 	local km = CONFIG.zoom_key_mode
 	if km == MODE_HOLD then
+		if free_zoom_blocked() then
+			return
+		end
 		hold_zoom_diks[key] = true
 		if zoom_mod_ok() then
 			set_free_zoom(true, "key_hold")
@@ -985,13 +1039,16 @@ on_mouse_wheel = function(dir, flags)
 		return
 	end
 
-	-- Reload: no free-zoom action; still consume so scroll does not switch weapons.
+	-- Reload: optional zoom-out; still consume scroll so it does not switch weapons.
 	if ctx == CTX.RELOAD then
-		reset_scroll_accum()
-		if flags then
-			flags.ret_value = false
+		if CONFIG.reload_clears_free then
+			reset_scroll_accum()
+			if flags then
+				flags.ret_value = false
+			end
+			return
 		end
-		return
+		-- reload_clears_free off: allow scroll zoom through like normal gameplay below.
 	end
 
 	local want_in = (dir == 1)

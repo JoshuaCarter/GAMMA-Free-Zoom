@@ -10,7 +10,7 @@
 		<text>Development</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_zoom_description">
-		<text>Doesn't affect magnified sights. Cannot free zoom while sprinting or using items. ADS + free zoom never exceed 50% total.</text>
+		<text>Doesn't affect magnified sights. Cannot zoom while sprinting or using items. ADS + zoom never exceed 50% total.</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_enabled">
 		<text>Enable</text>
@@ -34,13 +34,13 @@
 		<text>MMB to zoom</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_lmb_zoom_desc">
-		<text>Toggle: flip free zoom on click. Hold: zoom in while held.</text>
+		<text>Toggle: flip zoom on click. Hold: zoom in while held.</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_rmb_zoom_desc">
-		<text>Toggle: flip free zoom on click. Hold: zoom in while held.</text>
+		<text>Toggle: flip zoom on click. Hold: zoom in while held.</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_mmb_zoom_desc">
-		<text>Toggle: flip free zoom on click. Hold: zoom in while held.</text>
+		<text>Toggle: flip zoom on click. Hold: zoom in while held.</text>
 	</string>
 	<string id="ui_mcm_lst_dorn_free_zoom_mouse_mode_no">
 		<text>No</text>
@@ -55,16 +55,22 @@
 		<text>Restrict zoom to empty hands</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_empty_hands_only_desc">
-		<text>Only free zoom with empty hands. Zooms out when you equip anything.</text>
+		<text>Only zoom with nothing in hand (no weapon, knife, detector, or scanner).</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_exit_ads_clears_free">
 		<text>Zoom out when you leave ADS</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_exit_ads_clears_free_desc">
-		<text>Off: free zoom stays if you were free-zoomed while ADS.</text>
+		<text>Off: zoom stays if you were free-zoomed while ADS.</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_reload_clears_free">
+		<text>Zoom out when you reload</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_reload_clears_free_desc">
+		<text>Off: free zoom stays through reload and ammo select.</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_free_zoom">
-		<text>Free zoom % FOV reduction</text>
+		<text>Zoom % FOV reduction</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_ads_zoom">
 		<text>ADS zoom % FOV reduction</text>
