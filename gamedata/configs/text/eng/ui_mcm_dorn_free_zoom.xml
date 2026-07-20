@@ -30,6 +30,12 @@
 	<string id="ui_mcm_dorn_free_zoom_empty_hands_only_desc">
 		<text>Only free zoom with empty hands. Zooms out when you equip anything.</text>
 	</string>
+	<string id="ui_mcm_dorn_free_zoom_exit_ads_clears_free">
+		<text>Zoom out when you leave ADS</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_exit_ads_clears_free_desc">
+		<text>Off: free zoom stays if you were free-zoomed while ADS.</text>
+	</string>
 	<string id="ui_mcm_dorn_free_zoom_free_zoom">
 		<text>Free zoom % FOV reduction</text>
 	</string>
@@ -41,6 +47,12 @@
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_move_speed">
 		<text>Move speed % while zoomed</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_hud_fov_zoom">
+		<text>Also adjust gun HUD FOV</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_hud_fov_zoom_desc">
+		<text>Applies the same zoom % to hud_fov. Without this, your hands stay the same size when you zoom.</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_zoom_key">
 		<text>Zoom in/out</text>

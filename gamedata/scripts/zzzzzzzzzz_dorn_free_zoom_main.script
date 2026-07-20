@@ -2,10 +2,11 @@
 	Dorn's Free Zoom — zoom key / scroll-wheel free zoom, layered with ADS.
 
 	Free zoom and ADS are independent layers that add (ADS% + free%), hard-capped
-	at 50% total FOV shrink. We only write world fov + mouse_sens — never hud_fov.
-	Optical scope ADS owns FOV (we never write); free zoom is cancelled / blocked
-	there. Scroll passes through for PDA / UI / optical / sprint. Weapon slot key /
-	changed_slot / lower / item change resets free + ADS to hip.
+	at 50% total FOV shrink. World fov + mouse_sens always; optional hud_fov uses the
+	same stack % (samples console on ADS enter — no ASV detect). Optical scope ADS
+	owns world FOV (we never write); free zoom is cancelled / blocked there. Scroll
+	passes through for PDA / UI / optical / sprint. Weapon slot key / changed_slot /
+	lower / item change resets free + ADS to hip.
 ]]
 
 local MOD_ID = "dorn_free_zoom"
@@ -32,6 +33,8 @@ local CONFIG = {
 	free_zoom = 35,
 	ads_zoom = 15,
 	move_speed = 70,
+	hud_fov_zoom = false,
+	exit_ads_clears_free = true,
 	debug_log = false,
 }
 
@@ -88,6 +91,10 @@ local MENU_BLOCK = {
 local hip_fov = 60
 local hip_sens = 0.5
 local sens_per_fov = 0.5
+local hip_hud = 0.6
+-- Console hud_fov sampled once on ADS enter (ASV/others). Nil when not ADS.
+local ads_hud_base = nil
+local we_wrote_hud = false
 
 local wpn = nil
 local last_item_sec = nil
@@ -161,6 +168,8 @@ local function refresh_config()
 	CONFIG.free_zoom = clamp(DORN.mcm.number(MOD_ID, "main/free_zoom", 35), 0, 50)
 	CONFIG.ads_zoom = clamp(DORN.mcm.number(MOD_ID, "main/ads_zoom", 15), 0, 50)
 	CONFIG.move_speed = clamp(DORN.mcm.number(MOD_ID, "main/move_speed", 70), 0, 70)
+	CONFIG.hud_fov_zoom = DORN.mcm.bool(MOD_ID, "main/hud_fov_zoom", false)
+	CONFIG.exit_ads_clears_free = DORN.mcm.bool(MOD_ID, "main/exit_ads_clears_free", true)
 	CONFIG.debug_log = DORN.mcm.bool(MOD_ID, "development/debug_log", false)
 end
 
@@ -320,17 +329,13 @@ local function get_context()
 	return CTX.OK
 end
 
--- true = we own FOV; false = optical owns it (do not write).
+-- true = we own world FOV; false = optical owns it (do not write world fov).
 local function we_own_fov()
 	return not (ads_on and is_optical_ads())
 end
 
--- ADS alone = ads%; free alone = free%; both = ads% + free% (hard-capped at 50).
--- When stacked over 50, keep the ADS floor and cut free.
-local function compute_fov()
-	if not we_own_fov() then
-		return nil
-	end
+-- Stacked ADS% + free% (hard-capped at 50). Same pct drives world fov and optional hud_fov.
+local function compute_zoom_pct()
 	local pct = 0
 	if ads_on then
 		pct = pct + CONFIG.ads_zoom
@@ -342,6 +347,17 @@ local function compute_fov()
 		end
 		pct = pct + free_pct
 	end
+	if pct > 50 then
+		pct = 50
+	end
+	return pct
+end
+
+local function compute_fov()
+	if not we_own_fov() then
+		return nil
+	end
+	local pct = compute_zoom_pct()
 	if pct <= 0 then
 		return hip_fov
 	end
@@ -369,7 +385,39 @@ local function set_zoom_move_speed(active)
 	end
 end
 
--- World fov + mouse_sens only. Never write hud_fov (ASV / vanilla own the gun).
+-- Sample live console once per ADS enter (whoever wrote it — ASV etc.). Do not re-sample while we write.
+local function capture_ads_hud_base()
+	ads_hud_base = get_console_cmd(2, "hud_fov") or hip_hud
+end
+
+local function restore_hip_hud()
+	exec_console_cmd("hud_fov " .. hip_hud)
+	we_wrote_hud = false
+end
+
+local function apply_hud_fov()
+	if not CONFIG.hud_fov_zoom then
+		return
+	end
+	local pct = compute_zoom_pct()
+	if pct <= 0 then
+		restore_hip_hud()
+		return
+	end
+	local hud_base = hip_hud
+	if ads_on then
+		hud_base = ads_hud_base or hip_hud
+	end
+	local hud = hud_base * (1 - pct / 100)
+	-- Never raise above the ADS floor captured from others.
+	if ads_on and ads_hud_base and hud > ads_hud_base then
+		hud = ads_hud_base
+	end
+	exec_console_cmd("hud_fov " .. hud)
+	we_wrote_hud = true
+end
+
+-- World fov + mouse_sens.
 local function apply_console(fov)
 	exec_console_cmd("fov " .. fov)
 	exec_console_cmd("mouse_sens " .. fov * sens_per_fov)
@@ -377,20 +425,25 @@ end
 
 local function apply_fov()
 	local fov = compute_fov()
-	if fov == nil then
-		return
+	if fov ~= nil then
+		apply_console(fov)
 	end
-	apply_console(fov)
+	apply_hud_fov()
 end
 
 -- Hip baseline from options (not live console, which may already be zoomed).
 local function sync_hip_from_options()
 	local fov = ui_options and ui_options.get("video/basic/fov")
 	local sens = ui_options and ui_options.get("control/general/mouse_sens")
+	local hud = ui_options and ui_options.get("video/basic/hud_fov")
 	hip_fov = fov or get_console_cmd(2, "fov") or 75
 	hip_sens = sens or get_console_cmd(2, "mouse_sens") or 0.5
+	hip_hud = hud or get_console_cmd(2, "hud_fov") or 0.6
 	if hip_fov <= 0 then
 		hip_fov = 75
+	end
+	if not hip_hud or hip_hud <= 0 then
+		hip_hud = 0.6
 	end
 	sens_per_fov = hip_sens / hip_fov
 end
@@ -398,15 +451,21 @@ end
 -- Full reset: hip FOV, clear speed.
 local function reset_session(resync_options, reason)
 	local prev = mode_label()
+	local had_hud = we_wrote_hud
 	set_zoom_move_speed(false)
 	free_on = false
 	ads_on = false
+	ads_hud_base = nil
 	hold_zoom_dik = nil
 	reset_scroll_accum()
 	if resync_options then
 		sync_hip_from_options()
 	end
 	apply_fov()
+	-- Feature off mid-session: still undo our hud write.
+	if had_hud and not CONFIG.hud_fov_zoom then
+		restore_hip_hud()
+	end
 	logf(
 		"reset: reason=%s prev=%s resync=%s fov=%.2f",
 		tostring(reason or "?"),
@@ -505,11 +564,14 @@ local function set_ads_zoom(want_ads, source)
 			return false
 		end
 		ads_on = true
-		-- Optical: do not write FOV (and drop free like Kute).
+		-- Others (ASV) already wrote ADS hud_fov; sample once before we touch it.
+		capture_ads_hud_base()
+		-- Optical: do not write world FOV (and drop free like Kute).
 		if is_optical_ads() then
 			clear_free_zoom("optical_ads")
 			-- Clear any free/iron world FOV we wrote so scope/ASV starts clean.
 			apply_console(hip_fov)
+			apply_hud_fov()
 			logf("ads: source=%s mode=%s optical=true (FOV left alone) wpn=%s", source, mode_label(), wpn_label())
 			return true
 		end
@@ -519,6 +581,12 @@ local function set_ads_zoom(want_ads, source)
 			return false
 		end
 		ads_on = false
+		ads_hud_base = nil
+		if CONFIG.exit_ads_clears_free and free_on then
+			free_on = false
+			reset_scroll_accum()
+			set_zoom_move_speed(false)
+		end
 		apply_fov()
 	end
 
@@ -571,12 +639,50 @@ local function on_before_key_press(key, bind, dis, flags)
 end
 
 -- Slot change from wheel / scripts / anything that bypasses our key hook.
+-- Engine sometimes fires this during ADS / anims without a real item swap — ignore those.
 local function actor_on_changed_slot(new_slot, new_obj, prev_slot, prev_obj)
 	if not CONFIG.enabled then
 		return
 	end
 	if new_slot == prev_slot then
 		return
+	end
+	local function obj_id(obj)
+		if not obj then
+			return nil
+		end
+		local ok, id = pcall(function()
+			return obj:id()
+		end)
+		if ok then
+			return id
+		end
+		return nil
+	end
+	local new_id = obj_id(new_obj)
+	local prev_id = obj_id(prev_obj)
+	if new_id and prev_id and new_id == prev_id then
+		logf(
+			"changed_slot ignored: same item id=%s slot %s->%s",
+			tostring(new_id),
+			tostring(prev_slot),
+			tostring(new_slot)
+		)
+		return
+	end
+	-- Still aiming / free-zoomed with the same tracked item: not a real swap.
+	if (ads_on or free_on) and last_item_id then
+		refresh_wpn()
+		local cur = active_item_id()
+		if cur and cur == last_item_id then
+			logf(
+				"changed_slot ignored: still holding id=%s slot %s->%s",
+				tostring(cur),
+				tostring(prev_slot),
+				tostring(new_slot)
+			)
+			return
+		end
 	end
 	reset_zoom("changed_slot")
 end
@@ -623,7 +729,7 @@ local function on_option_change()
 	end
 
 	logf(
-		"opts: free=%d%% ads=%d%% speed=%d%% empty_hands=%s scroll=%s reverse=%s steps=%d gap=%dms mode=%s key=%s mod=%d km=%d",
+		"opts: free=%d%% ads=%d%% speed=%d%% empty_hands=%s scroll=%s reverse=%s steps=%d gap=%dms hud=%s mode=%s key=%s mod=%d km=%d",
 		CONFIG.free_zoom,
 		CONFIG.ads_zoom,
 		CONFIG.move_speed,
@@ -632,6 +738,7 @@ local function on_option_change()
 		tostring(CONFIG.scroll_wheel_reverse),
 		CONFIG.scroll_wheel_steps,
 		CONFIG.scroll_wheel_max_gap_ms,
+		tostring(CONFIG.hud_fov_zoom),
 		mode_label(),
 		tostring(CONFIG.zoom_key),
 		CONFIG.zoom_key_modifier,
@@ -877,9 +984,13 @@ local function actor_on_weapon_zoom_type_changed()
 	if is_optical_ads() then
 		clear_free_zoom("optical_type")
 		apply_console(hip_fov)
+		-- Others may have rewritten hud for scope type; re-sample floor.
+		capture_ads_hud_base()
+		apply_hud_fov()
 		logf("ADS type changed: optical=true wpn=%s (FOV handed off)", wpn_label())
 		return
 	end
+	capture_ads_hud_base()
 	apply_fov()
 	local fov = compute_fov()
 	logf(
