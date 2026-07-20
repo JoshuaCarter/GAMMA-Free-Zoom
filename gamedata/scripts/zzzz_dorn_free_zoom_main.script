@@ -24,6 +24,7 @@ local MODE_HOLD = 3
 
 local CONFIG = {
 	enabled = true,
+	empty_hands_only = false,
 	key_toggle = nil,
 	key_toggle_modifier = 0,
 	key_toggle_mode = MODE_SINGLE,
@@ -54,6 +55,7 @@ local CTX = {
 	OPTICAL = "optical",
 	SPRINT = "sprint",
 	NO_GUN = "no_gun",
+	HANDS_FULL = "hands_full",
 	LOWERED = "lowered",
 }
 
@@ -67,6 +69,7 @@ local CTX_BLOCK_FREE = {
 	[CTX.OPTICAL] = true,
 	[CTX.SPRINT] = true,
 	[CTX.NO_GUN] = true,
+	[CTX.HANDS_FULL] = true,
 	[CTX.LOWERED] = true,
 }
 
@@ -75,6 +78,7 @@ local CTX_SCROLL_PASS = {
 	[CTX.PDA] = true,
 	[CTX.GUI] = true,
 	[CTX.NO_GUN] = true,
+	[CTX.HANDS_FULL] = true,
 	[CTX.LOWERED] = true,
 }
 
@@ -131,20 +135,21 @@ local function mode_label()
 end
 
 local function refresh_config()
-	CONFIG.enabled = DORN.mcm.bool(MOD_ID, "zoom/enabled", true)
-	CONFIG.key_toggle = DORN.mcm.key(MOD_ID, "keybinds/key_toggle")
-	CONFIG.key_toggle_modifier = math.floor(DORN.mcm.number(MOD_ID, "keybinds/key_toggle_modifier", 0) + 0.5)
-	CONFIG.key_toggle_mode = math.floor(DORN.mcm.number(MOD_ID, "keybinds/key_toggle_mode", MODE_SINGLE) + 0.5)
+	CONFIG.enabled = DORN.mcm.bool(MOD_ID, "main/enabled", true)
+	CONFIG.empty_hands_only = DORN.mcm.bool(MOD_ID, "main/empty_hands_only", false)
+	CONFIG.key_toggle = DORN.mcm.key(MOD_ID, "main/key_toggle")
+	CONFIG.key_toggle_modifier = math.floor(DORN.mcm.number(MOD_ID, "main/key_toggle_modifier", 0) + 0.5)
+	CONFIG.key_toggle_mode = math.floor(DORN.mcm.number(MOD_ID, "main/key_toggle_mode", MODE_SINGLE) + 0.5)
 	if CONFIG.key_toggle_mode < MODE_SINGLE or CONFIG.key_toggle_mode > MODE_HOLD then
 		CONFIG.key_toggle_mode = MODE_SINGLE
 	end
-	CONFIG.scroll_wheel = DORN.mcm.bool(MOD_ID, "mouse_wheel/scroll_wheel", false)
-	CONFIG.reverse_scroll = DORN.mcm.bool(MOD_ID, "mouse_wheel/reverse_scroll", false)
-	CONFIG.scroll_steps = math.floor(DORN.mcm.number(MOD_ID, "mouse_wheel/scroll_steps", 1) + 0.5)
-	CONFIG.scroll_max_gap_ms = math.floor(DORN.mcm.number(MOD_ID, "mouse_wheel/scroll_max_gap_ms", 200) + 0.5)
-	CONFIG.free_zoom = math.floor(DORN.mcm.number(MOD_ID, "zoom/free_zoom", 35) + 0.5)
-	CONFIG.ads_zoom = math.floor(DORN.mcm.number(MOD_ID, "zoom/ads_zoom", 15) + 0.5)
-	CONFIG.move_speed = math.floor(DORN.mcm.number(MOD_ID, "zoom/move_speed", 70) + 0.5)
+	CONFIG.scroll_wheel = DORN.mcm.bool(MOD_ID, "main/scroll_wheel", false)
+	CONFIG.reverse_scroll = DORN.mcm.bool(MOD_ID, "main/reverse_scroll", false)
+	CONFIG.scroll_steps = math.floor(DORN.mcm.number(MOD_ID, "main/scroll_steps", 1) + 0.5)
+	CONFIG.scroll_max_gap_ms = math.floor(DORN.mcm.number(MOD_ID, "main/scroll_max_gap_ms", 200) + 0.5)
+	CONFIG.free_zoom = math.floor(DORN.mcm.number(MOD_ID, "main/free_zoom", 35) + 0.5)
+	CONFIG.ads_zoom = math.floor(DORN.mcm.number(MOD_ID, "main/ads_zoom", 15) + 0.5)
+	CONFIG.move_speed = math.floor(DORN.mcm.number(MOD_ID, "main/move_speed", 70) + 0.5)
 	CONFIG.debug_log = DORN.mcm.bool(MOD_ID, "development/debug_log", false)
 
 	if CONFIG.scroll_steps < 1 then
@@ -307,6 +312,16 @@ local function get_context()
 		return CTX.PDA
 	end
 	refresh_wpn()
+	if CONFIG.empty_hands_only then
+		-- Free zoom only with nothing in hands; anything equipped cancels it.
+		if wpn then
+			return CTX.HANDS_FULL
+		end
+		if actor_sprinting() then
+			return CTX.SPRINT
+		end
+		return CTX.OK
+	end
 	if not holding_zoomable_weapon() then
 		return CTX.NO_GUN
 	end
@@ -670,10 +685,11 @@ local function on_option_change()
 	end
 
 	logf(
-		"opts: free=%d%% ads=%d%% speed=%d%% scroll=%s reverse=%s steps=%d gap=%dms mode=%s key=%s mod=%d km=%d",
+		"opts: free=%d%% ads=%d%% speed=%d%% empty_hands=%s scroll=%s reverse=%s steps=%d gap=%dms mode=%s key=%s mod=%d km=%d",
 		CONFIG.free_zoom,
 		CONFIG.ads_zoom,
 		CONFIG.move_speed,
+		tostring(CONFIG.empty_hands_only),
 		tostring(CONFIG.scroll_wheel),
 		tostring(CONFIG.reverse_scroll),
 		CONFIG.scroll_steps,

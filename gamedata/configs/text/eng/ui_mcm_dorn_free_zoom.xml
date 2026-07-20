@@ -3,23 +3,32 @@
 	<string id="ui_mcm_menu_dorn_free_zoom">
 		<text>Dorn's Free Zoom</text>
 	</string>
-	<string id="ui_mcm_dorn_free_zoom_zoom_section">
-		<text>Zoom</text>
-	</string>
-	<string id="ui_mcm_dorn_free_zoom_keybinds_section">
-		<text>Keybinds</text>
-	</string>
-	<string id="ui_mcm_dorn_free_zoom_mouse_wheel_section">
-		<text>Mouse Wheel</text>
+	<string id="ui_mcm_dorn_free_zoom_main_section">
+		<text>Main</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_development_section">
 		<text>Development</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_zoom_description">
-		<text>Doesn't affect magnified sights. Cannot free zoom while sprinting, using items, or without a gun. ADS + free zoom never exceed 50% total.</text>
+		<text>Doesn't affect magnified sights. Cannot free zoom while sprinting or using items. ADS + free zoom never exceed 50% total.</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_enabled">
 		<text>Enable</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_zoom_header">
+		<text>Zoom</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_keybind_header">
+		<text>Keybind</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_mouse_wheel_header">
+		<text>Mouse Wheel</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_empty_hands_only">
+		<text>Restrict zoom to empty hands</text>
+	</string>
+	<string id="ui_mcm_dorn_free_zoom_empty_hands_only_desc">
+		<text>Only free zoom with empty hands. Zooms out when you equip anything.</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_free_zoom">
 		<text>Free zoom % FOV reduction</text>

@@ -14,9 +14,9 @@ function on_mcm_load()
 		text = "ui_mcm_menu_dorn_free_zoom",
 		gr = {
 			{
-				id = "zoom",
+				id = "main",
 				sh = true,
-				text = "ui_mcm_dorn_free_zoom_zoom_section",
+				text = "ui_mcm_dorn_free_zoom_main_section",
 				gr = MCM.with_header({
 					{
 						id = "zoom_description",
@@ -29,6 +29,19 @@ function on_mcm_load()
 						val = 1,
 						def = true,
 						hint = "dorn_free_zoom_enabled",
+					},
+					{ id = "line_zoom", type = "line" },
+					{
+						id = "zoom_header",
+						type = "title",
+						text = "ui_mcm_dorn_free_zoom_zoom_header",
+					},
+					{
+						id = "empty_hands_only",
+						type = "check",
+						val = 1,
+						def = false,
+						hint = "dorn_free_zoom_empty_hands_only",
 					},
 					{
 						id = "free_zoom",
@@ -60,13 +73,12 @@ function on_mcm_load()
 						def = 70,
 						hint = "dorn_free_zoom_move_speed",
 					},
-				}),
-			},
-			{
-				id = "keybinds",
-				sh = true,
-				text = "ui_mcm_dorn_free_zoom_keybinds_section",
-				gr = MCM.with_header({
+					{ id = "line_keybind", type = "line" },
+					{
+						id = "keybind_header",
+						type = "title",
+						text = "ui_mcm_dorn_free_zoom_keybind_header",
+					},
 					{
 						id = "key_toggle",
 						type = "key_bind",
@@ -100,13 +112,12 @@ function on_mcm_load()
 							{ 3, "dorn_free_zoom_mode_hold" },
 						},
 					},
-				}),
-			},
-			{
-				id = "mouse_wheel",
-				sh = true,
-				text = "ui_mcm_dorn_free_zoom_mouse_wheel_section",
-				gr = MCM.with_header({
+					{ id = "line_mouse_wheel", type = "line" },
+					{
+						id = "mouse_wheel_header",
+						type = "title",
+						text = "ui_mcm_dorn_free_zoom_mouse_wheel_header",
+					},
 					{
 						id = "scroll_wheel",
 						type = "check",
