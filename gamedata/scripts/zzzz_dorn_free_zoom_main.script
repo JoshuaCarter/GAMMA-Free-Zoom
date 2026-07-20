@@ -1,14 +1,11 @@
 --[[
-	Dorn's Free Zoom - toggle / zoom-in / zoom-out binds and optional scroll-wheel
-	control.
+	Dorn's Free Zoom — zoom key / scroll-wheel free zoom, layered with ADS.
 
 	Free zoom and ADS are independent layers that add (ADS% + free%), hard-capped
-	at 50% total FOV shrink. We only write world fov + mouse_sens — never hud_fov
-	(Adjustable Scope View / vanilla own gun placement). Optical scope ADS owns FOV
-	(we never write); free zoom is cancelled / blocked there. Scroll passes through
-	for PDA / UI / optical / sprint. Weapon slot key / changed_slot / lower / item
-	change resets free + ADS to hip. One zoom in/out keybind with single / double /
-	long / hold modes and optional Shift/Ctrl/Alt.
+	at 50% total FOV shrink. We only write world fov + mouse_sens — never hud_fov.
+	Optical scope ADS owns FOV (we never write); free zoom is cancelled / blocked
+	there. Scroll passes through for PDA / UI / optical / sprint. Weapon slot key /
+	changed_slot / lower / item change resets free + ADS to hip.
 ]]
 
 local MOD_ID = "dorn_free_zoom"
@@ -16,7 +13,7 @@ local DORN_COMMON_VERSION = "dorn_common_442e61f8" -- managed by sync-dorn-commo
 
 local DORN
 
--- key_toggle_mode: 0=single, 1=double, 2=long, 3=hold (in on down, out on up)
+-- zoom_key_mode: 0=single, 1=double, 2=long, 3=hold (in on down, out on up)
 local MODE_SINGLE = 0
 local MODE_DOUBLE = 1
 local MODE_LONG = 2
@@ -25,26 +22,24 @@ local MODE_HOLD = 3
 local CONFIG = {
 	enabled = true,
 	empty_hands_only = false,
-	key_toggle = nil,
-	key_toggle_modifier = 0,
-	key_toggle_mode = MODE_SINGLE,
-	scroll_wheel = false,
-	reverse_scroll = false,
-	scroll_steps = 1,
-	scroll_max_gap_ms = 200,
+	zoom_key = nil,
+	zoom_key_modifier = 0,
+	zoom_key_mode = MODE_SINGLE,
+	scroll_wheel_zoom = false,
+	scroll_wheel_reverse = false,
+	scroll_wheel_steps = 1,
+	scroll_wheel_max_gap_ms = 200,
 	free_zoom = 35,
 	ads_zoom = 15,
 	move_speed = 70,
 	debug_log = false,
 }
 
--- Independent layers. ADS% + free% add (hard-capped at 50 total).
 local free_on = false
 local ads_on = false
--- Hold mode: DIK currently down (so we keep try_free_on + know what to release). Nil otherwise.
-local hold_key_down = nil
+-- Hold mode: DIK currently down (retry set_free_zoom while held). Nil otherwise.
+local hold_zoom_dik = nil
 
--- World context. Priority order is encoded in get_context().
 local CTX = {
 	OK = "ok",
 	DISABLED = "disabled",
@@ -59,7 +54,6 @@ local CTX = {
 	LOWERED = "lowered",
 }
 
--- Contexts that forbid entering / staying in free zoom.
 local CTX_BLOCK_FREE = {
 	[CTX.DISABLED] = true,
 	[CTX.DEAD] = true,
@@ -73,30 +67,49 @@ local CTX_BLOCK_FREE = {
 	[CTX.LOWERED] = true,
 }
 
--- Contexts where scroll must pass through (PDA map, inventory UI, etc.).
+-- Scroll must pass through (PDA map, inventory UI, optical, sprint, etc.).
 local CTX_SCROLL_PASS = {
+	[CTX.DEAD] = true,
 	[CTX.PDA] = true,
 	[CTX.GUI] = true,
+	[CTX.OPTICAL] = true,
+	[CTX.SPRINT] = true,
 	[CTX.NO_GUN] = true,
 	[CTX.HANDS_FULL] = true,
 	[CTX.LOWERED] = true,
 }
 
-local fov_before = 60
-local mouse_sens_before = 0.5
-local mouse_to_fov = 0.5
+local MENU_BLOCK = {
+	UIInventory = true,
+	Dialog = true,
+	UIWorkshop = true,
+}
+
+local hip_fov = 60
+local hip_sens = 0.5
+local sens_per_fov = 0.5
 
 local wpn = nil
-local last_sec = nil
+local last_item_sec = nil
 local last_item_id = nil
-local GuiOpening = {}
+local menus_open = {}
 
-local scroll_count = 0
-local scroll_want_in = nil
+local scroll_accum = 0
+local scroll_want_in = false
 local scroll_last_ms = 0
 local last_ctx = nil
 
 local on_mouse_wheel
+
+local function clamp(n, lo, hi)
+	if n < lo then
+		return lo
+	end
+	if n > hi then
+		return hi
+	end
+	return n
+end
 
 local function log(msg)
 	if not (DORN and DORN.dbg) then
@@ -137,57 +150,27 @@ end
 local function refresh_config()
 	CONFIG.enabled = DORN.mcm.bool(MOD_ID, "main/enabled", true)
 	CONFIG.empty_hands_only = DORN.mcm.bool(MOD_ID, "main/empty_hands_only", false)
-	CONFIG.key_toggle = DORN.mcm.key(MOD_ID, "main/key_toggle")
-	CONFIG.key_toggle_modifier = math.floor(DORN.mcm.number(MOD_ID, "main/key_toggle_modifier", 0) + 0.5)
-	CONFIG.key_toggle_mode = math.floor(DORN.mcm.number(MOD_ID, "main/key_toggle_mode", MODE_SINGLE) + 0.5)
-	if CONFIG.key_toggle_mode < MODE_SINGLE or CONFIG.key_toggle_mode > MODE_HOLD then
-		CONFIG.key_toggle_mode = MODE_SINGLE
-	end
-	CONFIG.scroll_wheel = DORN.mcm.bool(MOD_ID, "main/scroll_wheel", false)
-	CONFIG.reverse_scroll = DORN.mcm.bool(MOD_ID, "main/reverse_scroll", false)
-	CONFIG.scroll_steps = math.floor(DORN.mcm.number(MOD_ID, "main/scroll_steps", 1) + 0.5)
-	CONFIG.scroll_max_gap_ms = math.floor(DORN.mcm.number(MOD_ID, "main/scroll_max_gap_ms", 200) + 0.5)
-	CONFIG.free_zoom = math.floor(DORN.mcm.number(MOD_ID, "main/free_zoom", 35) + 0.5)
-	CONFIG.ads_zoom = math.floor(DORN.mcm.number(MOD_ID, "main/ads_zoom", 15) + 0.5)
-	CONFIG.move_speed = math.floor(DORN.mcm.number(MOD_ID, "main/move_speed", 70) + 0.5)
+	CONFIG.zoom_key = DORN.mcm.key(MOD_ID, "main/zoom_key")
+	CONFIG.zoom_key_modifier = DORN.mcm.number(MOD_ID, "main/zoom_key_modifier", 0)
+	CONFIG.zoom_key_mode = clamp(DORN.mcm.number(MOD_ID, "main/zoom_key_mode", MODE_SINGLE), MODE_SINGLE, MODE_HOLD)
+	CONFIG.scroll_wheel_zoom = DORN.mcm.bool(MOD_ID, "main/scroll_wheel_zoom", false)
+	CONFIG.scroll_wheel_reverse = DORN.mcm.bool(MOD_ID, "main/scroll_wheel_reverse", false)
+	CONFIG.scroll_wheel_steps = clamp(DORN.mcm.number(MOD_ID, "main/scroll_wheel_steps", 1), 1, 10)
+	CONFIG.scroll_wheel_max_gap_ms = clamp(DORN.mcm.number(MOD_ID, "main/scroll_wheel_max_gap_ms", 200), 50, 500)
+	-- Stacked ADS% + free% is capped at 50 in FOV only.
+	CONFIG.free_zoom = clamp(DORN.mcm.number(MOD_ID, "main/free_zoom", 35), 0, 50)
+	CONFIG.ads_zoom = clamp(DORN.mcm.number(MOD_ID, "main/ads_zoom", 15), 0, 50)
+	CONFIG.move_speed = clamp(DORN.mcm.number(MOD_ID, "main/move_speed", 70), 0, 70)
 	CONFIG.debug_log = DORN.mcm.bool(MOD_ID, "development/debug_log", false)
-
-	if CONFIG.scroll_steps < 1 then
-		CONFIG.scroll_steps = 1
-	elseif CONFIG.scroll_steps > 10 then
-		CONFIG.scroll_steps = 10
-	end
-	if CONFIG.scroll_max_gap_ms < 50 then
-		CONFIG.scroll_max_gap_ms = 50
-	elseif CONFIG.scroll_max_gap_ms > 500 then
-		CONFIG.scroll_max_gap_ms = 500
-	end
-	-- Each slider 0-50 / 0-70. Stacked ADS% + free% is capped at 50 in FOV only.
-	if CONFIG.ads_zoom < 0 then
-		CONFIG.ads_zoom = 0
-	elseif CONFIG.ads_zoom > 50 then
-		CONFIG.ads_zoom = 50
-	end
-	if CONFIG.free_zoom < 0 then
-		CONFIG.free_zoom = 0
-	elseif CONFIG.free_zoom > 50 then
-		CONFIG.free_zoom = 50
-	end
-	if CONFIG.move_speed < 0 then
-		CONFIG.move_speed = 0
-	elseif CONFIG.move_speed > 70 then
-		CONFIG.move_speed = 70
-	end
 end
 
 local function reset_scroll_accum()
-	scroll_count = 0
-	scroll_want_in = nil
+	scroll_accum = 0
 	scroll_last_ms = 0
 end
 
-local function gui_open()
-	for _, open in pairs(GuiOpening) do
+local function any_menu_open()
+	for _, open in pairs(menus_open) do
 		if open then
 			return true
 		end
@@ -241,7 +224,6 @@ local function active_item_sec()
 	return nil
 end
 
--- Block free zoom while a weapon is mid-reload (state 7).
 local function weapon_reloading()
 	if not (wpn and wpn:cast_Weapon()) then
 		return false
@@ -297,7 +279,6 @@ local function actor_sprinting()
 	return IsMoveState("mcSprint")
 end
 
--- Resolve world context (single source of truth for blockers / reset).
 local function get_context()
 	if not CONFIG.enabled then
 		return CTX.DISABLED
@@ -305,7 +286,7 @@ local function get_context()
 	if actor_dead() then
 		return CTX.DEAD
 	end
-	if gui_open() then
+	if any_menu_open() then
 		return CTX.GUI
 	end
 	if pda_blocking() then
@@ -313,7 +294,6 @@ local function get_context()
 	end
 	refresh_wpn()
 	if CONFIG.empty_hands_only then
-		-- Free zoom only with nothing in hands; anything equipped cancels it.
 		if wpn then
 			return CTX.HANDS_FULL
 		end
@@ -345,9 +325,9 @@ local function we_own_fov()
 	return not (ads_on and is_optical_ads())
 end
 
--- FOV: ads alone = ads%; free alone = free%; both = ads% + free% (hard-capped at 50).
+-- ADS alone = ads%; free alone = free%; both = ads% + free% (hard-capped at 50).
 -- When stacked over 50, keep the ADS floor and cut free.
-local function compute_logical_fov()
+local function compute_fov()
 	if not we_own_fov() then
 		return nil
 	end
@@ -363,15 +343,12 @@ local function compute_logical_fov()
 		pct = pct + free_pct
 	end
 	if pct <= 0 then
-		return fov_before
+		return hip_fov
 	end
-	if pct > 50 then
-		pct = 50
-	end
-	return fov_before * (1 - pct / 100)
+	return hip_fov * (1 - pct / 100)
 end
 
-local function set_freezoom_speed(active)
+local function set_zoom_move_speed(active)
 	-- Prefer shared speed.script on GAMMA; else our vendored Teepo copy.
 	-- (Do not name the local `speed` — that shadows the global on the RHS.)
 	local speed_mod = (speed and speed.add_speed and speed) or dorn_free_zoom_speed
@@ -382,7 +359,7 @@ local function set_freezoom_speed(active)
 	if active then
 		-- move_speed is % of normal speed while free-zoomed (0-70).
 		local run_mult = CONFIG.move_speed / 100
-		-- Sprint slowdown is 1/8 of the run slowdown (was 5% vs 40% at old default).
+		-- Sprint slowdown is 1/8 of the run slowdown.
 		local sprint_mult = 1 - (1 - run_mult) * 0.125
 		speed_mod.add_speed("dorn_freezoom_speed_run", run_mult, false, true)
 		speed_mod.add_speed("dorn_freezoom_speed_sprint", sprint_mult, true, true)
@@ -395,18 +372,11 @@ end
 -- World fov + mouse_sens only. Never write hud_fov (ASV / vanilla own the gun).
 local function apply_console(fov)
 	exec_console_cmd("fov " .. fov)
-	exec_console_cmd("mouse_sens " .. fov * mouse_to_fov)
+	exec_console_cmd("mouse_sens " .. fov * sens_per_fov)
 end
 
--- Hip world FOV to console. Used when handing FOV off to optical / ASV.
-local function restore_hip_console()
-	exec_console_cmd("fov " .. fov_before)
-	exec_console_cmd("mouse_sens " .. fov_before * mouse_to_fov)
-end
-
--- Set target FOV when we own the view. Optical ADS: no-op.
-local function apply_desired_fov()
-	local fov = compute_logical_fov()
+local function apply_fov()
+	local fov = compute_fov()
 	if fov == nil then
 		return
 	end
@@ -414,58 +384,49 @@ local function apply_desired_fov()
 end
 
 -- Hip baseline from options (not live console, which may already be zoomed).
-local function sync_base_fov_from_options()
+local function sync_hip_from_options()
 	local fov = ui_options and ui_options.get("video/basic/fov")
 	local sens = ui_options and ui_options.get("control/general/mouse_sens")
-	fov_before = fov or get_console_cmd(2, "fov")
-	mouse_sens_before = sens or get_console_cmd(2, "mouse_sens")
-	if not fov_before or fov_before <= 0 then
-		fov_before = 75
+	hip_fov = fov or get_console_cmd(2, "fov") or 75
+	hip_sens = sens or get_console_cmd(2, "mouse_sens") or 0.5
+	if hip_fov <= 0 then
+		hip_fov = 75
 	end
-	mouse_to_fov = mouse_sens_before / fov_before
-end
-
-local function sync_free_speed()
-	if free_on then
-		set_freezoom_speed(true)
-	else
-		set_freezoom_speed(false)
-	end
+	sens_per_fov = hip_sens / hip_fov
 end
 
 -- Full reset: hip FOV, clear speed.
 local function reset_session(resync_options, reason)
 	local prev = mode_label()
-	set_freezoom_speed(false)
+	set_zoom_move_speed(false)
 	free_on = false
 	ads_on = false
+	hold_zoom_dik = nil
 	reset_scroll_accum()
 	if resync_options then
-		sync_base_fov_from_options()
+		sync_hip_from_options()
 	end
-	apply_desired_fov()
+	apply_fov()
 	logf(
 		"reset: reason=%s prev=%s resync=%s fov=%.2f",
 		tostring(reason or "?"),
 		prev,
 		tostring(resync_options and true or false),
-		fov_before
+		hip_fov
 	)
 end
 
--- Drop free layer only (keep ADS).
-local function clear_free(reason)
+local function clear_free_zoom(reason)
 	if not free_on then
 		return
 	end
 	logf("auto-out: leaving FREE because %s mode=%s", tostring(reason), mode_label())
 	free_on = false
 	reset_scroll_accum()
-	sync_free_speed()
-	apply_desired_fov()
+	set_zoom_move_speed(false)
+	apply_fov()
 end
 
--- Apply context rules: reset, or leave FREE when blocked.
 local function handle_context(ctx)
 	if last_ctx ~= ctx then
 		logf("ctx: %s -> %s mode=%s wpn=%s", tostring(last_ctx), ctx, mode_label(), wpn_label())
@@ -486,14 +447,13 @@ local function handle_context(ctx)
 	end
 
 	if free_on and CTX_BLOCK_FREE[ctx] then
-		clear_free(ctx)
+		clear_free_zoom(ctx)
 	end
 	return ctx
 end
 
--- Free zoom on/off. Stacks with ADS; blocked for optical / GUI / etc.
-local function set_free(want_free, source)
-	source = source or "set_free"
+local function set_free_zoom(want_free, source)
+	source = source or "set_free_zoom"
 	want_free = not not want_free
 	local ctx = get_context()
 	handle_context(ctx)
@@ -520,9 +480,9 @@ local function set_free(want_free, source)
 		reset_scroll_accum()
 	end
 
-	sync_free_speed()
-	apply_desired_fov()
-	local fov = compute_logical_fov()
+	set_zoom_move_speed(free_on)
+	apply_fov()
+	local fov = compute_fov()
 	logf(
 		"free: source=%s mode=%s fov=%s free=%d%% ads=%d%% wpn=%s",
 		source,
@@ -535,14 +495,9 @@ local function set_free(want_free, source)
 	return true
 end
 
--- Gated zoom-in attempt (keys / scroll / hold-retry). Fails closed if blocked.
-local function try_free_on(source)
-	return set_free(true, source)
-end
-
 -- ADS on/off. Keeps free_on; ADS% + free% add up to the 50% hard cap.
-local function set_ads(want_ads, source)
-	source = source or "set_ads"
+local function set_ads_zoom(want_ads, source)
+	source = source or "set_ads_zoom"
 	want_ads = not not want_ads
 
 	if want_ads then
@@ -552,26 +507,22 @@ local function set_ads(want_ads, source)
 		ads_on = true
 		-- Optical: do not write FOV (and drop free like Kute).
 		if is_optical_ads() then
-			if free_on then
-				free_on = false
-				reset_scroll_accum()
-				sync_free_speed()
-			end
+			clear_free_zoom("optical_ads")
 			-- Clear any free/iron world FOV we wrote so scope/ASV starts clean.
-			restore_hip_console()
+			apply_console(hip_fov)
 			logf("ads: source=%s mode=%s optical=true (FOV left alone) wpn=%s", source, mode_label(), wpn_label())
 			return true
 		end
-		apply_desired_fov()
+		apply_fov()
 	else
 		if not ads_on then
 			return false
 		end
 		ads_on = false
-		apply_desired_fov()
+		apply_fov()
 	end
 
-	local fov = compute_logical_fov()
+	local fov = compute_fov()
 	logf(
 		"ads: source=%s mode=%s fov=%s ads=%d%% free_on=%s wpn=%s",
 		source,
@@ -630,7 +581,6 @@ local function actor_on_changed_slot(new_slot, new_obj, prev_slot, prev_obj)
 	reset_zoom("changed_slot")
 end
 
--- Equipped item finished changing (backup if earlier hooks were missed).
 local function on_active_item_changed(prev_id, new_id, prev_sec, new_sec)
 	logf(
 		"item change: id %s->%s sec %s->%s",
@@ -642,8 +592,7 @@ local function on_active_item_changed(prev_id, new_id, prev_sec, new_sec)
 	reset_zoom("item_change")
 end
 
--- Holster / switch anim start (backup).
-local function actor_on_weapon_lower(wpn)
+local function actor_on_weapon_lower(_wpn)
 	if not CONFIG.enabled then
 		return
 	end
@@ -664,12 +613,12 @@ local function on_option_change()
 		return
 	end
 
-	sync_base_fov_from_options()
+	sync_hip_from_options()
 	-- Leave free/ADS zoom whenever options change (ours or video FOV / sens).
 	reset_session(false, "opts")
 
 	UnregisterScriptCallback("on_mouse_wheel", on_mouse_wheel)
-	if CONFIG.scroll_wheel then
+	if CONFIG.scroll_wheel_zoom then
 		RegisterScriptCallback("on_mouse_wheel", on_mouse_wheel)
 	end
 
@@ -679,14 +628,14 @@ local function on_option_change()
 		CONFIG.ads_zoom,
 		CONFIG.move_speed,
 		tostring(CONFIG.empty_hands_only),
-		tostring(CONFIG.scroll_wheel),
-		tostring(CONFIG.reverse_scroll),
-		CONFIG.scroll_steps,
-		CONFIG.scroll_max_gap_ms,
+		tostring(CONFIG.scroll_wheel_zoom),
+		tostring(CONFIG.scroll_wheel_reverse),
+		CONFIG.scroll_wheel_steps,
+		CONFIG.scroll_wheel_max_gap_ms,
 		mode_label(),
-		tostring(CONFIG.key_toggle),
-		CONFIG.key_toggle_modifier,
-		CONFIG.key_toggle_mode
+		tostring(CONFIG.zoom_key),
+		CONFIG.zoom_key_modifier,
+		CONFIG.zoom_key_mode
 	)
 end
 
@@ -695,12 +644,12 @@ local function actor_on_first_update()
 		log("first_update: DORN not ready yet")
 		return
 	end
-	sync_base_fov_from_options()
-	apply_desired_fov()
+	sync_hip_from_options()
+	apply_fov()
 	logf(
 		"first_update: ready fov=%.2f sens=%.3f mode=%s",
-		fov_before,
-		mouse_sens_before,
+		hip_fov,
+		hip_sens,
 		mode_label()
 	)
 end
@@ -718,24 +667,24 @@ local function actor_on_update()
 
 	refresh_wpn()
 	local id = active_item_id()
-	local sec = active_item_sec()
 	if id ~= last_item_id then
 		local prev_id = last_item_id
-		local prev_sec = last_sec
+		local prev_sec = last_item_sec
 		last_item_id = id
-		last_sec = sec
-		on_active_item_changed(prev_id, id, prev_sec, sec)
+		last_item_sec = active_item_sec()
+		on_active_item_changed(prev_id, id, prev_sec, last_item_sec)
 	end
 
 	handle_context(get_context())
 	poll_hold_zoom()
 end
 
--- key_toggle_mode: 0=single, 1=double, 2=long, 3=hold (in on down, out on up).
+-- zoom_key_mode: 0=single, 1=double, 2=long, 3=hold (in on down, out on up).
 -- modifier 0 = no extra modifier required (not "forbid Shift/Ctrl/Alt").
 -- Otherwise MCM's MOD_NONE fails when the bind itself is a modifier key.
-local function mod_ok(modifier)
-	if not modifier or modifier == 0 then
+local function zoom_mod_ok()
+	local modifier = CONFIG.zoom_key_modifier
+	if modifier == 0 then
 		return true
 	end
 	if not (ui_mcm and ui_mcm.get_mod_key) then
@@ -752,34 +701,30 @@ local function keys_blocked_ctx()
 	return nil
 end
 
--- Hold: while key is down, keep calling try_free_on (gates decide).
+-- Hold: while key is down, keep trying free zoom (update already ran handle_context).
 poll_hold_zoom = function()
-	if not hold_key_down or CONFIG.key_toggle_mode ~= MODE_HOLD then
+	if not hold_zoom_dik or CONFIG.zoom_key_mode ~= MODE_HOLD or free_on then
 		return
 	end
-	if not mod_ok(CONFIG.key_toggle_modifier) then
+	if not zoom_mod_ok() then
 		return
 	end
-	try_free_on("key_hold")
-end
-
-local function toggle_key_match(key)
-	return CONFIG.key_toggle and key == CONFIG.key_toggle
+	set_free_zoom(true, "key_hold")
 end
 
 local function on_key_press(key)
 	if not DORN or not DORN.sys.ready(MOD_ID, db, on_option_change) then
 		return
 	end
-	if not toggle_key_match(key) then
+	if not CONFIG.zoom_key or key ~= CONFIG.zoom_key then
 		return
 	end
 
-	local km = CONFIG.key_toggle_mode
+	local km = CONFIG.zoom_key_mode
 	if km == MODE_HOLD then
-		hold_key_down = key
-		if mod_ok(CONFIG.key_toggle_modifier) then
-			try_free_on("key_hold")
+		hold_zoom_dik = key
+		if zoom_mod_ok() then
+			set_free_zoom(true, "key_hold")
 		end
 		return
 	end
@@ -789,14 +734,14 @@ local function on_key_press(key)
 		logf("key ignored: key=%s ctx=%s mode=%s", tostring(key), blocked, mode_label())
 		return
 	end
-	if not mod_ok(CONFIG.key_toggle_modifier) then
+	if not zoom_mod_ok() then
 		return
 	end
 
 	if km == MODE_DOUBLE then
-		if ui_mcm and ui_mcm.double_tap and ui_mcm.double_tap(MOD_ID .. "_toggle", key) then
+		if ui_mcm and ui_mcm.double_tap and ui_mcm.double_tap(MOD_ID .. "_zoom", key) then
 			logf("key: double (mode=%s)", mode_label())
-			set_free(not free_on, "key_double")
+			set_free_zoom(not free_on, "key_double")
 		end
 		return
 	end
@@ -804,46 +749,45 @@ local function on_key_press(key)
 		-- Long press is handled in on_key_hold.
 		return
 	end
-	-- Single: toggle immediately on press.
 	logf("key: single (mode=%s)", mode_label())
-	set_free(not free_on, "key_single")
+	set_free_zoom(not free_on, "key_single")
 end
 
 local function on_key_hold(key)
 	if not DORN or not DORN.sys.ready(MOD_ID, db, on_option_change) then
 		return
 	end
-	if CONFIG.key_toggle_mode ~= MODE_LONG then
+	if CONFIG.zoom_key_mode ~= MODE_LONG then
 		return
 	end
-	if not toggle_key_match(key) then
+	if not CONFIG.zoom_key or key ~= CONFIG.zoom_key then
 		return
 	end
 	if keys_blocked_ctx() then
 		return
 	end
-	if not mod_ok(CONFIG.key_toggle_modifier) then
+	if not zoom_mod_ok() then
 		return
 	end
-	if not (ui_mcm and ui_mcm.key_hold and ui_mcm.key_hold(MOD_ID .. "_toggle", key)) then
+	if not (ui_mcm and ui_mcm.key_hold and ui_mcm.key_hold(MOD_ID .. "_zoom", key)) then
 		return
 	end
 	logf("key: long (mode=%s)", mode_label())
-	set_free(not free_on, "key_long")
+	set_free_zoom(not free_on, "key_long")
 end
 
 local function on_key_release(key)
 	if not CONFIG.enabled then
 		return
 	end
-	if hold_key_down and key == hold_key_down then
-		hold_key_down = nil
-		set_free(false, "key_hold_release")
+	if hold_zoom_dik and key == hold_zoom_dik then
+		hold_zoom_dik = nil
+		set_free_zoom(false, "key_hold_release")
 	end
 end
 
 on_mouse_wheel = function(dir, flags)
-	if not CONFIG.enabled or not CONFIG.scroll_wheel then
+	if not CONFIG.enabled or not CONFIG.scroll_wheel_zoom then
 		return
 	end
 	if not (db and db.actor) then
@@ -851,8 +795,7 @@ on_mouse_wheel = function(dir, flags)
 	end
 
 	local ctx = get_context()
-	-- PDA / inventory / optical / sprint / no-gun / lowered: pass through.
-	if CTX_SCROLL_PASS[ctx] or ctx == CTX.OPTICAL or ctx == CTX.SPRINT then
+	if CTX_SCROLL_PASS[ctx] then
 		reset_scroll_accum()
 		return
 	end
@@ -867,25 +810,25 @@ on_mouse_wheel = function(dir, flags)
 	end
 
 	local want_in = (dir == 1)
-	if CONFIG.reverse_scroll then
+	if CONFIG.scroll_wheel_reverse then
 		want_in = not want_in
 	end
 
-	local now = time_global()
-	if scroll_want_in ~= want_in or (scroll_last_ms > 0 and (now - scroll_last_ms) > CONFIG.scroll_max_gap_ms) then
-		scroll_count = 0
+	local now = time_global() or 0
+	if scroll_want_in ~= want_in or (scroll_last_ms > 0 and (now - scroll_last_ms) > CONFIG.scroll_wheel_max_gap_ms) then
+		scroll_accum = 0
 		scroll_want_in = want_in
 	end
-	scroll_count = scroll_count + 1
+	scroll_accum = scroll_accum + 1
 	scroll_last_ms = now
 
-	if scroll_count >= CONFIG.scroll_steps then
+	if scroll_accum >= CONFIG.scroll_wheel_steps then
 		reset_scroll_accum()
-		logf("scroll: fire want_in=%s steps=%d mode=%s", tostring(want_in), CONFIG.scroll_steps, mode_label())
+		logf("scroll: fire want_in=%s steps=%d mode=%s", tostring(want_in), CONFIG.scroll_wheel_steps, mode_label())
 		if want_in then
-			try_free_on("scroll")
+			set_free_zoom(true, "scroll")
 		else
-			set_free(false, "scroll")
+			set_free_zoom(false, "scroll")
 		end
 	end
 
@@ -910,7 +853,7 @@ local function actor_on_weapon_zoom_in()
 	end
 
 	logf("ADS in: wpn=%s from_mode=%s", wpn_label(), mode_label())
-	set_ads(true, "zoom_in")
+	set_ads_zoom(true, "zoom_in")
 end
 
 local function actor_on_weapon_zoom_out()
@@ -922,7 +865,7 @@ local function actor_on_weapon_zoom_out()
 	end
 	refresh_wpn()
 	logf("ADS out: wpn=%s mode=%s", wpn_label(), mode_label())
-	set_ads(false, "zoom_out")
+	set_ads_zoom(false, "zoom_out")
 end
 
 -- Optical <-> iron: cancel free on optical; re-assert stacked floor on iron.
@@ -931,20 +874,14 @@ local function actor_on_weapon_zoom_type_changed()
 		return
 	end
 	refresh_wpn()
-	local optical = is_optical_ads()
-	if optical then
-		if free_on then
-			free_on = false
-			reset_scroll_accum()
-			sync_free_speed()
-		end
-		restore_hip_console()
+	if is_optical_ads() then
+		clear_free_zoom("optical_type")
+		apply_console(hip_fov)
 		logf("ADS type changed: optical=true wpn=%s (FOV handed off)", wpn_label())
 		return
 	end
-	-- Back to iron / alt: re-apply ADS% (* free% if still on).
-	apply_desired_fov()
-	local fov = compute_logical_fov()
+	apply_fov()
+	local fov = compute_fov()
 	logf(
 		"ADS type changed: optical=false mode=%s fov=%s wpn=%s",
 		mode_label(),
@@ -962,34 +899,34 @@ local function actor_on_weapon_reload()
 end
 
 local function on_actor_menu_open(name)
-	if name == "UIInventory" or name == "Dialog" or name == "UIWorkshop" then
-		GuiOpening[name] = true
-		reset_scroll_accum()
-		logf("gui open: %s mode=%s", name, mode_label())
-		handle_context(get_context())
+	if not MENU_BLOCK[name] then
+		return
 	end
+	menus_open[name] = true
+	reset_scroll_accum()
+	logf("gui open: %s mode=%s", name, mode_label())
+	handle_context(get_context())
 end
 
 local function on_actor_menu_close(name)
-	if name == "UIInventory" or name == "Dialog" or name == "UIWorkshop" then
-		GuiOpening[name] = false
-		logf("gui close: %s", name)
+	if not MENU_BLOCK[name] then
+		return
 	end
+	menus_open[name] = false
+	logf("gui close: %s", name)
 end
 
--- Death / teardown: always full reset so speed + FOV cannot stick.
 local function actor_on_before_death()
 	reset_session(true, "before_death")
 end
 
 local function actor_on_net_destroy()
 	reset_session(true, "net_destroy")
-	hold_key_down = nil
 	wpn = nil
-	last_sec = nil
+	last_item_sec = nil
 	last_item_id = nil
 	last_ctx = nil
-	GuiOpening = {}
+	menus_open = {}
 end
 
 function on_game_start()

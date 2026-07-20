@@ -42,13 +42,13 @@
 	<string id="ui_mcm_dorn_free_zoom_move_speed">
 		<text>Move speed % while zoomed</text>
 	</string>
-	<string id="ui_mcm_dorn_free_zoom_key_toggle">
+	<string id="ui_mcm_dorn_free_zoom_zoom_key">
 		<text>Zoom in/out</text>
 	</string>
-	<string id="ui_mcm_dorn_free_zoom_key_toggle_mode">
+	<string id="ui_mcm_dorn_free_zoom_zoom_key_mode">
 		<text>Key mode</text>
 	</string>
-	<string id="ui_mcm_dorn_free_zoom_key_toggle_mode_desc">
+	<string id="ui_mcm_dorn_free_zoom_zoom_key_mode_desc">
 		<text>Single / Double / Long: toggle zoom. Hold: zoom in on press, zoom out on release.</text>
 	</string>
 	<string id="ui_mcm_lst_dorn_free_zoom_mode_single">
@@ -63,25 +63,25 @@
 	<string id="ui_mcm_lst_dorn_free_zoom_mode_hold">
 		<text>Hold</text>
 	</string>
-	<string id="ui_mcm_dorn_free_zoom_scroll_wheel">
+	<string id="ui_mcm_dorn_free_zoom_scroll_wheel_zoom">
 		<text>Scroll to zoom</text>
 	</string>
-	<string id="ui_mcm_dorn_free_zoom_scroll_wheel_desc">
+	<string id="ui_mcm_dorn_free_zoom_scroll_wheel_zoom_desc">
 		<text>Blocks weapon switch on scroll.</text>
 	</string>
-	<string id="ui_mcm_dorn_free_zoom_reverse_scroll">
+	<string id="ui_mcm_dorn_free_zoom_scroll_wheel_reverse">
 		<text>Invert scroll direction</text>
 	</string>
-	<string id="ui_mcm_dorn_free_zoom_scroll_steps">
+	<string id="ui_mcm_dorn_free_zoom_scroll_wheel_steps">
 		<text>Scroll steps to zoom</text>
 	</string>
-	<string id="ui_mcm_dorn_free_zoom_scroll_steps_desc">
+	<string id="ui_mcm_dorn_free_zoom_scroll_wheel_steps_desc">
 		<text>Raise for twitchy mice.</text>
 	</string>
-	<string id="ui_mcm_dorn_free_zoom_scroll_max_gap_ms">
+	<string id="ui_mcm_dorn_free_zoom_scroll_wheel_max_gap_ms">
 		<text>Scroll steps reset ms</text>
 	</string>
-	<string id="ui_mcm_dorn_free_zoom_scroll_max_gap_ms_desc">
+	<string id="ui_mcm_dorn_free_zoom_scroll_wheel_max_gap_ms_desc">
 		<text>Steps only accumulate if the last step was &lt; X ms ago.</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_debug_log">

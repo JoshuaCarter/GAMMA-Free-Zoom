@@ -1,6 +1,9 @@
-# Free Zoom v0.2.1
+Check your config as you may need to change things again.
 
-- Hold mode: keeps trying to zoom in while the key is held (works through holster / empty-hands gates).
-- Can bind the zoom key itself to Shift / Ctrl / Alt (with modifier = None).
-- Any options change zooms you back out.
-- MCM: key mode listed before modifier.
+Changes
+- Fixed issues with ads_zoom (was touching the wrong fov for that...)
+- One zoom in/out keybind. Modes: Single (toggle), Double (toggle), Long (toggle), Hold (zoom in on key down, zooms out on key up).
+- Shoved mcm options back into 1 tab due to less content to fit.
+- New option: Restrict zoom to empty hands.
+- Hold mode: keeps trying to zoom in while the key is held.
+- Modifier keys can work as normal keybinds.
