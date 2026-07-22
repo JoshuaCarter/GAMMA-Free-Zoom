@@ -42,7 +42,7 @@ local CONFIG = {
 	free_zoom = 35,
 	ads_zoom = 15,
 	move_speed = 70,
-	hud_fov_zoom = false,
+	hud_fov_zoom = true,
 	exit_ads_clears_free = true,
 	reload_clears_free = true,
 	debug_log = false,
@@ -174,13 +174,13 @@ local function refresh_config()
 	CONFIG.mmb_zoom = clamp(DORN.mcm.number(MOD_ID, "main/mmb_zoom", MOUSE_NONE), MOUSE_NONE, MOUSE_HOLD)
 	CONFIG.scroll_wheel_zoom = DORN.mcm.bool(MOD_ID, "main/scroll_wheel_zoom", false)
 	CONFIG.scroll_wheel_reverse = DORN.mcm.bool(MOD_ID, "main/scroll_wheel_reverse", false)
-	CONFIG.scroll_wheel_steps = clamp(DORN.mcm.number(MOD_ID, "main/scroll_wheel_steps", 1), 1, 10)
+	CONFIG.scroll_wheel_steps = clamp(DORN.mcm.number(MOD_ID, "main/scroll_wheel_steps", 1), 1, 5)
 	CONFIG.scroll_wheel_max_gap_ms = clamp(DORN.mcm.number(MOD_ID, "main/scroll_wheel_max_gap_ms", 200), 50, 500)
 	-- Stacked ADS% + free% is capped at 50 in FOV only.
 	CONFIG.free_zoom = clamp(DORN.mcm.number(MOD_ID, "main/free_zoom", 35), 0, 50)
 	CONFIG.ads_zoom = clamp(DORN.mcm.number(MOD_ID, "main/ads_zoom", 15), 0, 50)
 	CONFIG.move_speed = clamp(DORN.mcm.number(MOD_ID, "main/move_speed", 70), 0, 70)
-	CONFIG.hud_fov_zoom = DORN.mcm.bool(MOD_ID, "main/hud_fov_zoom", false)
+	CONFIG.hud_fov_zoom = DORN.mcm.bool(MOD_ID, "main/hud_fov_zoom", true)
 	CONFIG.exit_ads_clears_free = DORN.mcm.bool(MOD_ID, "main/exit_ads_clears_free", true)
 	CONFIG.reload_clears_free = DORN.mcm.bool(MOD_ID, "main/reload_clears_free", true)
 	CONFIG.debug_log = DORN.mcm.bool(MOD_ID, "development/debug_log", false)
