@@ -305,6 +305,10 @@ local function get_context()
 	if any_menu_open() then
 		return CTX.GUI
 	end
+	-- F8 debug / options / sleep / any Register_UI — not in MENU_BLOCK whitelist.
+	if actor_menu and actor_menu.is_hud_free and not actor_menu.is_hud_free() then
+		return CTX.GUI
+	end
 	if pda_blocking() then
 		return CTX.PDA
 	end
@@ -961,7 +965,7 @@ local function on_key_release(key)
 	end
 end
 
-on_mouse_wheel = function(dir, flags)
+on_mouse_wheel = function(dir, _flags)
 	if not CONFIG.enabled or not CONFIG.scroll_wheel_zoom then
 		return
 	end
@@ -975,13 +979,10 @@ on_mouse_wheel = function(dir, flags)
 		return
 	end
 
-	-- Reload: optional zoom-out; still consume scroll so it does not switch weapons.
+	-- Reload: optional zoom-out; do not steal the wheel.
 	if ctx == CTX.RELOAD then
 		if CONFIG.reload_clears_free then
 			reset_scroll_accum()
-			if flags then
-				flags.ret_value = false
-			end
 			return
 		end
 		-- reload_clears_free off: allow scroll zoom through like normal gameplay below.
@@ -1008,11 +1009,6 @@ on_mouse_wheel = function(dir, flags)
 		else
 			set_free_zoom(false, "scroll")
 		end
-	end
-
-	-- Gameplay with scroll free-zoom on: consume so the wheel does not switch weapons.
-	if flags then
-		flags.ret_value = false
 	end
 end
 

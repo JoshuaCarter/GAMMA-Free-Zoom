@@ -102,11 +102,11 @@
 	<string id="ui_mcm_lst_dorn_free_zoom_mode_hold">
 		<text>Hold</text>
 	</string>
+	<string id="ui_mcm_dorn_free_zoom_scroll_wheel_weapon_warning">
+		<text>NOTE: You should disable Settings &gt; Modded Exes &gt; Control &gt; Mouse &gt; "Change weapons with mouse wheel"</text>
+	</string>
 	<string id="ui_mcm_dorn_free_zoom_scroll_wheel_zoom">
 		<text>Scroll to zoom</text>
-	</string>
-	<string id="ui_mcm_dorn_free_zoom_scroll_wheel_zoom_desc">
-		<text>Blocks weapon switch on scroll.</text>
 	</string>
 	<string id="ui_mcm_dorn_free_zoom_scroll_wheel_reverse">
 		<text>Invert scroll direction</text>

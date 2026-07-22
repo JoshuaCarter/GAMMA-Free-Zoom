@@ -164,11 +164,16 @@ function on_mcm_load()
 						},
 					},
 					{
+						id = "scroll_wheel_weapon_warning",
+						type = "desc",
+						text = "ui_mcm_dorn_free_zoom_scroll_wheel_weapon_warning",
+						clr = { 255, 220, 160, 40 },
+					},
+					{
 						id = "scroll_wheel_zoom",
 						type = "check",
 						val = 1,
 						def = false,
-						hint = "dorn_free_zoom_scroll_wheel_zoom",
 					},
 					{
 						id = "scroll_wheel_reverse",
